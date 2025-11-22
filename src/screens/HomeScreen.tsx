@@ -10,13 +10,14 @@ import { SPACING } from '../constants/colors';
 import { useTheme } from '../context/ThemeContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Task, TaskSpace } from '../types';
-import { getTasks, getTaskSpaces, addTask, saveTasks, deleteTask } from '../services/storage';
+import { getTasks, getTaskSpaces, addTask, saveTasks, deleteTask, getUserProfile } from '../services/storage';
 import { addDays, subDays, addMonths, subMonths } from 'date-fns';
 import DailyView from '../components/DailyView';
 import MonthlyView from '../components/MonthlyView';
 import ViewTabs, { ViewMode } from '../components/ViewTabs';
 import DateNavigation from '../components/DateNavigation';
 import AddTaskModal from '../components/AddTaskModal';
+import { scheduleTaskReminder, cancelTaskReminder, rescheduleAllReminders } from '../services/reminderScheduler';
 
 export default function HomeScreen({ navigation }: any) {
     const { colors } = useTheme();
@@ -34,12 +35,20 @@ export default function HomeScreen({ navigation }: any) {
 
     const loadData = async () => {
         try {
-            const [loadedTasks, loadedSpaces] = await Promise.all([
+            const [loadedTasks, loadedSpaces, profile] = await Promise.all([
                 getTasks(),
                 getTaskSpaces(),
+                getUserProfile(),
             ]);
             setTasks(loadedTasks);
             setTaskSpaces(loadedSpaces);
+
+            // Reschedule all pending reminders
+            await rescheduleAllReminders(
+                loadedTasks,
+                loadedSpaces,
+                profile?.interests?.flatMap(i => i.items) || []
+            );
         } catch (error) {
             console.error('Error loading data:', error);
         }
@@ -84,6 +93,10 @@ export default function HomeScreen({ navigation }: any) {
 
     const handleSaveTask = async (taskData: Partial<Task>) => {
         try {
+            // Get user profile for interests
+            const profile = await getUserProfile();
+            const userInterests = profile?.interests?.flatMap(i => i.items) || [];
+
             if (editingTask) {
                 // Update existing task
                 const updatedTask: Task = {
@@ -98,6 +111,21 @@ export default function HomeScreen({ navigation }: any) {
 
                 // Persist changes
                 await saveTasks(updatedTasks);
+
+                // Reschedule reminder with updated task info
+                await cancelTaskReminder(updatedTask.id);
+                if (!updatedTask.completed) {
+                    const taskSpace = taskSpaces.find(ts => ts.id === updatedTask.taskSpaceId);
+                    await scheduleTaskReminder({
+                        taskId: updatedTask.id,
+                        taskTitle: updatedTask.title,
+                        taskDescription: updatedTask.description,
+                        startTime: new Date(updatedTask.startTime),
+                        reminderMinutes: updatedTask.reminderMinutesBefore ?? 15,
+                        taskSpace: taskSpace?.name || 'Task',
+                        userInterests,
+                    });
+                }
             } else {
                 // Create new task
                 const newTask: Task = {
@@ -111,6 +139,8 @@ export default function HomeScreen({ navigation }: any) {
                     isRecurring: false,
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
+                    reminderMinutesBefore: taskData.reminderMinutesBefore ?? 15,
+                    checklist: taskData.checklist || [],
                 };
 
                 // Update local state immediately
@@ -118,6 +148,18 @@ export default function HomeScreen({ navigation }: any) {
 
                 // Persist changes
                 await addTask(newTask);
+
+                // Schedule reminder
+                const taskSpace = taskSpaces.find(ts => ts.id === newTask.taskSpaceId);
+                await scheduleTaskReminder({
+                    taskId: newTask.id,
+                    taskTitle: newTask.title,
+                    taskDescription: newTask.description,
+                    startTime: new Date(newTask.startTime),
+                    reminderMinutes: newTask.reminderMinutesBefore ?? 15,
+                    taskSpace: taskSpace?.name || 'Task',
+                    userInterests,
+                });
             }
 
             setIsAddTaskVisible(false);
@@ -129,6 +171,9 @@ export default function HomeScreen({ navigation }: any) {
 
     const handleDeleteTask = async (taskId: string) => {
         try {
+            // Cancel reminder
+            await cancelTaskReminder(taskId);
+
             // Update local state immediately
             setTasks(prev => prev.filter(t => t.id !== taskId));
 
@@ -151,6 +196,11 @@ export default function HomeScreen({ navigation }: any) {
 
             // Persist changes
             await saveTasks(updatedTasks);
+
+            // Cancel reminder if task is completed
+            if (updatedTask.completed) {
+                await cancelTaskReminder(task.id);
+            }
         } catch (error) {
             console.error('Error toggling task:', error);
             await loadData(); // Revert on error

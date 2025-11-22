@@ -56,6 +56,12 @@ export default function AddTaskModal({
     const [isMultiDay, setIsMultiDay] = useState(false);
     const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
+    // Reminder state
+    const [reminderMinutes, setReminderMinutes] = useState(15); // Default 15 minutes
+    const [showCustomReminderPicker, setShowCustomReminderPicker] = useState(false);
+    const [customReminderHours, setCustomReminderHours] = useState(0);
+    const [customReminderMinutes, setCustomReminderMinutes] = useState(15);
+
     useEffect(() => {
         if (visible) {
             if (task) {
@@ -66,6 +72,7 @@ export default function AddTaskModal({
                 setStartTime(new Date(task.startTime));
                 setEndTime(new Date(task.endTime));
                 setChecklist(task.checklist || []);
+                setReminderMinutes(task.reminderMinutesBefore ?? 15);
 
                 const start = new Date(task.startTime);
                 const end = new Date(task.endTime);
@@ -77,6 +84,7 @@ export default function AddTaskModal({
                 setChecklist([]);
                 setNewChecklistItem('');
                 setIsMultiDay(false);
+                setReminderMinutes(15);
 
                 if (taskSpaces.length > 0) {
                     setSelectedSpaceId(taskSpaces[0].id);
@@ -101,6 +109,7 @@ export default function AddTaskModal({
             startTime: startTime.toISOString(),
             endTime: endTime.toISOString(),
             checklist: checklist,
+            reminderMinutesBefore: reminderMinutes,
         });
         onClose();
     };
@@ -361,6 +370,12 @@ export default function AddTaskModal({
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
             justifyContent: 'flex-end',
         },
+        pickerModalOverlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
         modalContent: {
             backgroundColor: colors.background.primary,
             borderTopLeftRadius: BORDER_RADIUS.xl,
@@ -618,6 +633,33 @@ export default function AddTaskModal({
         toggleButtonTextActive: {
             color: '#FFFFFF',
         },
+        // Reminder Styles
+        reminderOptions: {
+            flexDirection: 'column',
+            gap: SPACING.sm,
+        },
+        reminderOption: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: colors.background.secondary,
+            padding: SPACING.md,
+            borderRadius: BORDER_RADIUS.md,
+            borderWidth: 1,
+            borderColor: colors.border,
+        },
+        selectedReminderOption: {
+            backgroundColor: colors.primary + '15',
+            borderColor: colors.primary,
+        },
+        reminderOptionText: {
+            fontSize: FONT_SIZES.md,
+            color: colors.text.primary,
+        },
+        selectedReminderOptionText: {
+            color: colors.primary,
+            fontWeight: FONT_WEIGHTS.bold,
+        },
     }), [colors]);
 
     return (
@@ -800,6 +842,51 @@ export default function AddTaskModal({
                             </View>
                         </View>
 
+                        {/* Reminder */}
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Reminder</Text>
+                            <View style={styles.reminderOptions}>
+                                {[
+                                    { label: 'At start time', value: 0 },
+                                    { label: '5 min before', value: 5 },
+                                    { label: '15 min before', value: 15 },
+                                    { label: '30 min before', value: 30 },
+                                    { label: '1 hour before', value: 60 },
+                                    { label: 'Custom time', value: -1 },
+                                ].map((option) => (
+                                    <TouchableOpacity
+                                        key={option.value}
+                                        style={[
+                                            styles.reminderOption,
+                                            (option.value === -1 ? reminderMinutes > 60 || (reminderMinutes !== 0 && reminderMinutes !== 5 && reminderMinutes !== 15 && reminderMinutes !== 30 && reminderMinutes !== 60) : reminderMinutes === option.value) && styles.selectedReminderOption
+                                        ]}
+                                        onPress={() => {
+                                            if (option.value === -1) {
+                                                setShowCustomReminderPicker(true);
+                                            } else {
+                                                setReminderMinutes(option.value);
+                                            }
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.reminderOptionText,
+                                            (option.value === -1 ? reminderMinutes > 60 || (reminderMinutes !== 0 && reminderMinutes !== 5 && reminderMinutes !== 15 && reminderMinutes !== 30 && reminderMinutes !== 60) : reminderMinutes === option.value) && styles.selectedReminderOptionText
+                                        ]}>
+                                            {option.value === -1 && reminderMinutes > 60 ?
+                                                `Custom (${Math.floor(reminderMinutes / 60)}h ${reminderMinutes % 60}m)` :
+                                                option.value === -1 && (reminderMinutes !== 0 && reminderMinutes !== 5 && reminderMinutes !== 15 && reminderMinutes !== 30 && reminderMinutes !== 60) ?
+                                                    `Custom (${reminderMinutes}m)` :
+                                                    option.label
+                                            }
+                                        </Text>
+                                        {((option.value === -1 ? reminderMinutes > 60 || (reminderMinutes !== 0 && reminderMinutes !== 5 && reminderMinutes !== 15 && reminderMinutes !== 30 && reminderMinutes !== 60) : reminderMinutes === option.value)) && (
+                                            <MaterialIcons name="check" size={18} color={colors.primary} />
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
                         {/* Save Button */}
                         <TouchableOpacity
                             style={[styles.saveButton, !title.trim() && styles.disabledButton]}
@@ -827,6 +914,73 @@ export default function AddTaskModal({
             <TimePickerModal />
             <DatePickerModal />
             <DatePickerModal isEndDate />
+
+            {/* Custom Reminder Picker Modal */}
+            <Modal
+                transparent
+                visible={showCustomReminderPicker}
+                animationType="fade"
+                onRequestClose={() => setShowCustomReminderPicker(false)}
+            >
+                <TouchableOpacity
+                    style={styles.pickerModalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowCustomReminderPicker(false)}
+                >
+                    <View style={styles.timePickerContainer}>
+                        <Text style={styles.timePickerTitle}>Custom Reminder Time</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.md }}>
+                            <View style={{ alignItems: 'center' }}>
+                                <Text style={styles.label}>Hours</Text>
+                                <TextInput
+                                    style={[styles.input, { width: 80, textAlign: 'center' }]}
+                                    keyboardType="number-pad"
+                                    value={customReminderHours.toString()}
+                                    onChangeText={(text) => {
+                                        const hours = parseInt(text) || 0;
+                                        setCustomReminderHours(Math.max(0, Math.min(24, hours)));
+                                    }}
+                                    placeholder="0"
+                                    placeholderTextColor={colors.text.tertiary}
+                                />
+                            </View>
+                            <Text style={styles.timePickerTitle}>:</Text>
+                            <View style={{ alignItems: 'center' }}>
+                                <Text style={styles.label}>Minutes</Text>
+                                <TextInput
+                                    style={[styles.input, { width: 80, textAlign: 'center' }]}
+                                    keyboardType="number-pad"
+                                    value={customReminderMinutes.toString()}
+                                    onChangeText={(text) => {
+                                        const minutes = parseInt(text) || 0;
+                                        setCustomReminderMinutes(Math.max(0, Math.min(59, minutes)));
+                                    }}
+                                    placeholder="0"
+                                    placeholderTextColor={colors.text.tertiary}
+                                />
+                            </View>
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.lg }}>
+                            <TouchableOpacity
+                                style={[styles.saveButton, { flex: 1 }]}
+                                onPress={() => {
+                                    const totalMinutes = (customReminderHours * 60) + customReminderMinutes;
+                                    setReminderMinutes(totalMinutes);
+                                    setShowCustomReminderPicker(false);
+                                }}
+                            >
+                                <Text style={styles.saveButtonText}>Set Reminder</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.deleteButton, { flex: 1 }]}
+                                onPress={() => setShowCustomReminderPicker(false)}
+                            >
+                                <Text style={styles.deleteButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
         </Modal>
     );
 }

@@ -15,8 +15,8 @@ class GeminiProvider implements AIProvider {
         }
 
         this.genAI = new GoogleGenerativeAI(profile.geminiApiKey);
-        // Using Gemini 2.0 Flash for best cost/performance
-        this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+        // Using Gemini 2.0 Flash (stable) for better quota limits
+        this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     }
 
     private buildCompactContext(context: AIContextData): string {
@@ -111,6 +111,47 @@ class GeminiProvider implements AIProvider {
 
     clearCache(): void {
         this.cache.clear();
+    }
+}
+
+/**
+ * Helper function to get a simple suggestion from Gemini
+ */
+export async function getGeminiSuggestion(systemPrompt: string, userPrompt: string): Promise<string> {
+    try {
+        const profile = await getUserProfile();
+        if (!profile?.geminiApiKey) {
+            throw new Error('Gemini API key not found');
+        }
+
+        const apiKey = profile.geminiApiKey;
+        const maskedKey = `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`;
+        console.log('🔑 Using API key:', maskedKey);
+        console.log('📡 Gemini API model: gemini-2.0-flash');
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+
+        const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+        console.log('📨 Sending request to Gemini API...');
+        console.log('📏 Prompt length:', fullPrompt.length, 'characters');
+
+        const result = await model.generateContent(fullPrompt);
+        const response = result.response.text().trim();
+
+        console.log('📥 Gemini API response received');
+        console.log('📊 Response length:', response.length, 'characters');
+        console.log('💬 Response text:', response);
+
+        return response;
+    } catch (error: any) {
+        console.error('❌ Error getting Gemini suggestion:', error);
+        console.error('📋 Error details:', {
+            message: error.message,
+            status: error.status,
+            statusText: error.statusText,
+        });
+        throw error;
     }
 }
 
