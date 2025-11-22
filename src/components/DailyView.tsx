@@ -42,15 +42,11 @@ export default function DailyView({
     onTaskPress,
     onToggleComplete,
     onToggleChecklistItem,
-    onPreviousDay,
-    onNextDay,
-    onToday,
 }: DailyViewProps) {
     const { colors } = useTheme();
     const dayTasks = getTasksForDay(tasks, date);
     const [overflowTask, setOverflowTask] = React.useState<Task | null>(null);
 
-    // Generate hours 0-23
     const hours = Array.from({ length: 24 }, (_, i) => i);
 
     const getTaskSpaceColor = (taskSpaceId: string): string => {
@@ -101,10 +97,10 @@ export default function DailyView({
         const overflowTasks: Task[] = [];
         const sortedTasks = [...tasks].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
-        // First: identify overlapping groups
         const overlappingGroups: Task[][] = [];
         const processedTasks = new Set<string>();
 
+        // First: identify overlapping groups
         sortedTasks.forEach(task => {
             if (processedTasks.has(task.id)) return;
 
@@ -128,16 +124,8 @@ export default function DailyView({
         });
 
         // Second: assign layouts
-        sortedTasks.forEach(task => {
-            const group = overlappingGroups.find(g => g.some(t => t.id === task.id));
-
-            if (!group) {
-                // No overlap - full width
-                layouts[task.id] = { left: '0%', width: '100%', isOverflow: false };
-                return;
-            }
-
-            // Overlapping - use columns
+        // Process overlapping groups first
+        overlappingGroups.forEach(group => {
             const columns: Task[][] = [[], []];
             const sortedGroup = [...group].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
@@ -164,6 +152,13 @@ export default function DailyView({
             });
         });
 
+        // Then process non-overlapping tasks
+        sortedTasks.forEach(task => {
+            if (!processedTasks.has(task.id)) {
+                layouts[task.id] = { left: '0%', width: '100%', isOverflow: false };
+            }
+        });
+
         return { layouts, overflowTasks };
     };
 
@@ -184,13 +179,29 @@ export default function DailyView({
         if (!overflowTask) return null;
         return (
             <Modal transparent visible={!!overflowTask} animationType="fade" onRequestClose={() => setOverflowTask(null)}>
-                <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: SPACING.lg }} activeOpacity={1} onPress={() => setOverflowTask(null)}>
+                <TouchableOpacity
+                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: SPACING.lg }}
+                    activeOpacity={1}
+                    onPress={() => setOverflowTask(null)}
+                >
                     <View style={{ backgroundColor: colors.background.primary, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, maxHeight: '80%' }}>
-                        <Text style={{ fontSize: FONT_SIZES.lg, fontWeight: 'bold', marginBottom: SPACING.md, color: colors.text.primary }}>Overlapping Tasks</Text>
+                        <Text style={{ fontSize: FONT_SIZES.lg, fontWeight: 'bold', marginBottom: SPACING.md, color: colors.text.primary }}>
+                            Overlapping Tasks
+                        </Text>
                         <ScrollView>
                             {overflowTasks.map(task => (
                                 <View key={task.id} style={{ marginBottom: SPACING.md }}>
-                                    <TaskCard task={task} spaceColor={getTaskSpaceColor(task.taskSpaceId)} spaceName={getTaskSpaceName(task.taskSpaceId)} onPress={() => { setOverflowTask(null); onTaskPress(task); }} onToggleComplete={() => onToggleComplete?.(task)} onToggleChecklistItem={(itemId) => onToggleChecklistItem?.(task.id, itemId)} />
+                                    <TaskCard
+                                        task={task}
+                                        spaceColor={getTaskSpaceColor(task.taskSpaceId)}
+                                        spaceName={getTaskSpaceName(task.taskSpaceId)}
+                                        onPress={() => {
+                                            setOverflowTask(null);
+                                            onTaskPress(task);
+                                        }}
+                                        onToggleComplete={() => onToggleComplete?.(task)}
+                                        onToggleChecklistItem={(itemId) => onToggleChecklistItem?.(task.id, itemId)}
+                                    />
                                 </View>
                             ))}
                         </ScrollView>
@@ -242,7 +253,7 @@ export default function DailyView({
 
                         return (
                             <View key={task.id} style={[styles.taskWrapper, { top, height: Math.max(height, 20), left: layout.left as any, width: layout.width as any }]}>
-                                <TaskCard task={task} spaceColor={getTaskSpaceColor(task.taskSpaceId)} spaceName={getTaskSpaceName(task.taskSpaceId)} onPress={() => onTaskPress(task)} onToggleComplete={() => onToggleComplete?.(task)} onToggleChecklistItem={(itemId) => onToggleChecklistItem?.(task.id, itemId)} compact={height < 60 || isOverlapping} isOverlapping={isOverlapping} style={{ flex: 1 }} />
+                                <TaskCard task={task} spaceColor={getTaskSpaceColor(task.taskSpaceId)} spaceName={getTaskSpaceName(task.taskSpaceId)} onPress={() => onTaskPress(task)} onToggleComplete={() => onToggleComplete?.(task)} onToggleChecklistItem={(itemId) => onToggleChecklistItem?.(task.id, itemId)} compact={height <= 80 || isOverlapping} isOverlapping={isOverlapping} style={{ flex: 1 }} />
                             </View>
                         );
                     })}
