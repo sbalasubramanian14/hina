@@ -61,7 +61,7 @@ export default function DateNavigation({ date, onPrevious, onNext, onToday }: Da
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.dateDisplay} onPress={onToday}>
-                <Text style={styles.dateText}>{format(date, 'MMMM d, yyyy')}</Text>
+                <Text style={styles.dateText} numberOfLines={1} adjustsFontSizeToFit>{format(date, 'EEE, MMM d, yyyy')}</Text>
                 {!isToday && (
                     <Text style={{ color: colors.primary, fontSize: FONT_SIZES.xs, marginTop: 2 }}>
                         Tap to go to Today
