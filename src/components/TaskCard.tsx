@@ -54,6 +54,7 @@ export default function TaskCard({
             shadowOffset: { width: 0, height: 1 },
             shadowOpacity: 0.1,
             shadowRadius: 2,
+            minHeight: compact ? 35 : 60, // Ensure minimum height for visibility
         },
         contentRow: {
             flexDirection: 'row',
@@ -151,13 +152,13 @@ export default function TaskCard({
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            flex: 1,
+            gap: SPACING.sm,
         },
         compactActions: {
             flexDirection: 'row',
             gap: SPACING.xs,
             alignItems: 'center',
-            marginLeft: SPACING.xs,
+            flexShrink: 0, // Prevent actions from shrinking
         },
     }), [colors, compact, spaceColor]);
 
@@ -247,7 +248,7 @@ export default function TaskCard({
 
                         {compact ? (
                             <View style={styles.compactContent}>
-                                <Text style={[styles.title, task.completed && styles.titleCompleted]} numberOfLines={1}>
+                                <Text style={[styles.title, task.completed && styles.titleCompleted, { flex: 1 }]} numberOfLines={2}>
                                     {task.title}
                                 </Text>
                                 <View style={styles.compactActions}>

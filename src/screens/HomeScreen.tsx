@@ -114,7 +114,7 @@ export default function HomeScreen({ navigation }: any) {
 
                 // Reschedule reminder with updated task info
                 await cancelTaskReminder(updatedTask.id);
-                if (!updatedTask.completed) {
+                if (!updatedTask.completed && updatedTask.reminderMinutesBefore !== null) {
                     const taskSpace = taskSpaces.find(ts => ts.id === updatedTask.taskSpaceId);
                     await scheduleTaskReminder({
                         taskId: updatedTask.id,
@@ -149,17 +149,19 @@ export default function HomeScreen({ navigation }: any) {
                 // Persist changes
                 await addTask(newTask);
 
-                // Schedule reminder
-                const taskSpace = taskSpaces.find(ts => ts.id === newTask.taskSpaceId);
-                await scheduleTaskReminder({
-                    taskId: newTask.id,
-                    taskTitle: newTask.title,
-                    taskDescription: newTask.description,
-                    startTime: new Date(newTask.startTime),
-                    reminderMinutes: newTask.reminderMinutesBefore ?? 15,
-                    taskSpace: taskSpace?.name || 'Task',
-                    userInterests,
-                });
+                // Schedule reminder if enabled
+                if (newTask.reminderMinutesBefore !== null) {
+                    const taskSpace = taskSpaces.find(ts => ts.id === newTask.taskSpaceId);
+                    await scheduleTaskReminder({
+                        taskId: newTask.id,
+                        taskTitle: newTask.title,
+                        taskDescription: newTask.description,
+                        startTime: new Date(newTask.startTime),
+                        reminderMinutes: newTask.reminderMinutesBefore ?? 15,
+                        taskSpace: taskSpace?.name || 'Task',
+                        userInterests,
+                    });
+                }
             }
 
             setIsAddTaskVisible(false);

@@ -57,7 +57,7 @@ export default function AddTaskModal({
     const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
     // Reminder state
-    const [reminderMinutes, setReminderMinutes] = useState(15); // Default 15 minutes
+    const [reminderMinutes, setReminderMinutes] = useState<number | null>(15); // Default 15 minutes
     const [showCustomReminderPicker, setShowCustomReminderPicker] = useState(false);
     const [customReminderHours, setCustomReminderHours] = useState(0);
     const [customReminderMinutes, setCustomReminderMinutes] = useState(15);
@@ -660,6 +660,31 @@ export default function AddTaskModal({
             color: colors.primary,
             fontWeight: FONT_WEIGHTS.bold,
         },
+        // Reminder Chip Styles
+        reminderChip: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: SPACING.md,
+            paddingVertical: SPACING.sm,
+            backgroundColor: colors.background.secondary,
+            borderRadius: BORDER_RADIUS.full,
+            borderWidth: 1,
+            borderColor: colors.border,
+            gap: SPACING.xs,
+        },
+        reminderChipSelected: {
+            backgroundColor: colors.primary + '15',
+            borderColor: colors.primary,
+        },
+        reminderChipText: {
+            fontSize: FONT_SIZES.sm,
+            color: colors.text.secondary,
+            fontWeight: FONT_WEIGHTS.medium,
+        },
+        reminderChipTextSelected: {
+            color: colors.primary,
+            fontWeight: FONT_WEIGHTS.bold,
+        },
     }), [colors]);
 
     return (
@@ -845,46 +870,66 @@ export default function AddTaskModal({
                         {/* Reminder */}
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Reminder</Text>
-                            <View style={styles.reminderOptions}>
-                                {[
-                                    { label: 'At start time', value: 0 },
-                                    { label: '5 min before', value: 5 },
-                                    { label: '15 min before', value: 15 },
-                                    { label: '30 min before', value: 30 },
-                                    { label: '1 hour before', value: 60 },
-                                    { label: 'Custom time', value: -1 },
-                                ].map((option) => (
-                                    <TouchableOpacity
-                                        key={option.value}
-                                        style={[
-                                            styles.reminderOption,
-                                            (option.value === -1 ? reminderMinutes > 60 || (reminderMinutes !== 0 && reminderMinutes !== 5 && reminderMinutes !== 15 && reminderMinutes !== 30 && reminderMinutes !== 60) : reminderMinutes === option.value) && styles.selectedReminderOption
-                                        ]}
-                                        onPress={() => {
-                                            if (option.value === -1) {
-                                                setShowCustomReminderPicker(true);
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                <View style={{ flexDirection: 'row', gap: SPACING.sm }}>
+                                    {[
+                                        { label: 'None', icon: 'notifications-off', value: null },
+                                        { label: 'At start', icon: 'notifications', value: 0 },
+                                        { label: '5m', icon: 'schedule', value: 5 },
+                                        { label: '15m', icon: 'schedule', value: 15 },
+                                        { label: '30m', icon: 'schedule', value: 30 },
+                                        { label: '1h', icon: 'schedule', value: 60 },
+                                        { label: 'Custom', icon: 'edit', value: -1 },
+                                    ].map((option) => {
+                                        const isCustom = option.value === -1;
+                                        const isSelected = option.value === null
+                                            ? reminderMinutes === null
+                                            : isCustom
+                                                ? (reminderMinutes !== null && reminderMinutes > 60 || (reminderMinutes !== null && reminderMinutes !== 0 && reminderMinutes !== 5 && reminderMinutes !== 15 && reminderMinutes !== 30 && reminderMinutes !== 60))
+                                                : reminderMinutes === option.value;
+
+                                        let displayLabel = option.label;
+                                        if (isCustom && isSelected && reminderMinutes !== null) {
+                                            if (reminderMinutes >= 60) {
+                                                const hours = Math.floor(reminderMinutes / 60);
+                                                const mins = reminderMinutes % 60;
+                                                displayLabel = mins > 0 ? `${hours}h${mins}m` : `${hours}h`;
                                             } else {
-                                                setReminderMinutes(option.value);
+                                                displayLabel = `${reminderMinutes}m`;
                                             }
-                                        }}
-                                    >
-                                        <Text style={[
-                                            styles.reminderOptionText,
-                                            (option.value === -1 ? reminderMinutes > 60 || (reminderMinutes !== 0 && reminderMinutes !== 5 && reminderMinutes !== 15 && reminderMinutes !== 30 && reminderMinutes !== 60) : reminderMinutes === option.value) && styles.selectedReminderOptionText
-                                        ]}>
-                                            {option.value === -1 && reminderMinutes > 60 ?
-                                                `Custom (${Math.floor(reminderMinutes / 60)}h ${reminderMinutes % 60}m)` :
-                                                option.value === -1 && (reminderMinutes !== 0 && reminderMinutes !== 5 && reminderMinutes !== 15 && reminderMinutes !== 30 && reminderMinutes !== 60) ?
-                                                    `Custom (${reminderMinutes}m)` :
-                                                    option.label
-                                            }
-                                        </Text>
-                                        {((option.value === -1 ? reminderMinutes > 60 || (reminderMinutes !== 0 && reminderMinutes !== 5 && reminderMinutes !== 15 && reminderMinutes !== 30 && reminderMinutes !== 60) : reminderMinutes === option.value)) && (
-                                            <MaterialIcons name="check" size={18} color={colors.primary} />
-                                        )}
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
+                                        }
+
+                                        return (
+                                            <TouchableOpacity
+                                                key={option.value ?? 'none'}
+                                                style={[
+                                                    styles.reminderChip,
+                                                    isSelected && styles.reminderChipSelected
+                                                ]}
+                                                onPress={() => {
+                                                    if (isCustom) {
+                                                        setShowCustomReminderPicker(true);
+                                                    } else {
+                                                        setReminderMinutes(option.value);
+                                                    }
+                                                }}
+                                            >
+                                                <MaterialIcons
+                                                    name={option.icon as any}
+                                                    size={16}
+                                                    color={isSelected ? colors.primary : colors.text.secondary}
+                                                />
+                                                <Text style={[
+                                                    styles.reminderChipText,
+                                                    isSelected && styles.reminderChipTextSelected
+                                                ]}>
+                                                    {displayLabel}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </ScrollView>
                         </View>
 
                         {/* Save Button */}
