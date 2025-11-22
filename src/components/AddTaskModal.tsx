@@ -238,6 +238,27 @@ export default function AddTaskModal({
         const targetDate = showTimePicker === 'start' ? startTime : endTime;
         const hours = Array.from({ length: 24 }, (_, i) => i);
         const minutes = [0, 15, 30, 45];
+        const ITEM_HEIGHT = 45; // Fixed height for calculation
+
+        const hourScrollRef = React.useRef<ScrollView>(null);
+        const minuteScrollRef = React.useRef<ScrollView>(null);
+
+        useEffect(() => {
+            if (showTimePicker) {
+                // Scroll to current selection after a short delay to allow rendering
+                setTimeout(() => {
+                    const hourIndex = targetDate.getHours();
+                    const minuteIndex = minutes.indexOf(targetDate.getMinutes());
+
+                    if (hourIndex !== -1 && hourScrollRef.current) {
+                        hourScrollRef.current.scrollTo({ y: hourIndex * ITEM_HEIGHT, animated: true });
+                    }
+                    if (minuteIndex !== -1 && minuteScrollRef.current) {
+                        minuteScrollRef.current.scrollTo({ y: minuteIndex * ITEM_HEIGHT, animated: true });
+                    }
+                }, 100);
+            }
+        }, [showTimePicker]);
 
         const setTime = (h: number, m: number) => {
             const newDate = new Date(targetDate);
@@ -272,12 +293,17 @@ export default function AddTaskModal({
                             Select {showTimePicker === 'start' ? 'Start' : 'End'} Time
                         </Text>
                         <View style={styles.timeColumns}>
-                            <ScrollView style={styles.column} showsVerticalScrollIndicator={false}>
+                            <ScrollView
+                                ref={hourScrollRef}
+                                style={styles.column}
+                                showsVerticalScrollIndicator={false}
+                            >
                                 {hours.map(h => (
                                     <TouchableOpacity
                                         key={h}
                                         style={[
                                             styles.timeOption,
+                                            { height: ITEM_HEIGHT, justifyContent: 'center' },
                                             targetDate.getHours() === h && styles.selectedTimeOption
                                         ]}
                                         onPress={() => setTime(h, targetDate.getMinutes())}
@@ -292,12 +318,17 @@ export default function AddTaskModal({
                                 ))}
                             </ScrollView>
                             <View style={styles.separator}><Text style={{ fontSize: 24, color: colors.text.primary }}>:</Text></View>
-                            <ScrollView style={styles.column} showsVerticalScrollIndicator={false}>
+                            <ScrollView
+                                ref={minuteScrollRef}
+                                style={styles.column}
+                                showsVerticalScrollIndicator={false}
+                            >
                                 {minutes.map(m => (
                                     <TouchableOpacity
                                         key={m}
                                         style={[
                                             styles.timeOption,
+                                            { height: ITEM_HEIGHT, justifyContent: 'center' },
                                             targetDate.getMinutes() === m && styles.selectedTimeOption
                                         ]}
                                         onPress={() => setTime(targetDate.getHours(), m)}

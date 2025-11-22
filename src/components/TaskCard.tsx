@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SPACING, BORDER_RADIUS, FONT_SIZES, FONT_WEIGHTS } from '../constants/colors';
 import { useTheme } from '../context/ThemeContext';
@@ -11,6 +11,7 @@ interface TaskCardProps {
     spaceColor: string;
     spaceName: string;
     compact?: boolean;
+    isOverlapping?: boolean;
     onPress?: () => void;
     onToggleComplete?: () => void;
     onToggleChecklistItem?: (itemId: string) => void;
@@ -22,17 +23,23 @@ export default function TaskCard({
     spaceColor,
     spaceName,
     compact = false,
+    isOverlapping = false,
     onPress,
     onToggleComplete,
     onToggleChecklistItem,
     style,
 }: TaskCardProps) {
     const { colors } = useTheme();
+    const [showChecklistModal, setShowChecklistModal] = React.useState(false);
 
     const startTime = new Date(task.startTime);
     const endTime = new Date(task.endTime);
     const timeRange = `${format(startTime, 'HH:mm')} - ${format(endTime, 'HH:mm')}`;
     const hasChecklist = task.checklist && task.checklist.length > 0;
+
+    // Smart display logic
+    const showCompactChecklist = hasChecklist && (compact || isOverlapping);
+    const showFullChecklist = hasChecklist && !compact && !isOverlapping;
 
     const styles = React.useMemo(() => StyleSheet.create({
         container: {
@@ -85,6 +92,7 @@ export default function TaskCard({
         actions: {
             flexDirection: 'row',
             gap: SPACING.xs,
+            alignItems: 'center',
         },
         actionButton: {
             padding: SPACING.xs,
@@ -111,74 +119,209 @@ export default function TaskCard({
             textDecorationLine: 'line-through',
             opacity: 0.6,
         },
+        checklistBadge: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.primary + '20',
+            paddingHorizontal: SPACING.sm,
+            paddingVertical: 4,
+            borderRadius: BORDER_RADIUS.md,
+            gap: 4,
+        },
+        checklistBadgeText: {
+            fontSize: 12,
+            color: colors.primary,
+            fontWeight: '600',
+        },
+        checklistBadgeCompact: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.primary + '20',
+            paddingHorizontal: SPACING.xs,
+            paddingVertical: 2,
+            borderRadius: BORDER_RADIUS.sm,
+            gap: 2,
+        },
+        checklistBadgeTextCompact: {
+            fontSize: 11,
+            color: colors.primary,
+            fontWeight: '600',
+        },
+        compactContent: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flex: 1,
+        },
+        compactActions: {
+            flexDirection: 'row',
+            gap: SPACING.xs,
+            alignItems: 'center',
+            marginLeft: SPACING.xs,
+        },
     }), [colors, compact, spaceColor]);
 
-    return (
-        <TouchableOpacity
-            style={[styles.container, style]}
-            onPress={onPress}
-            activeOpacity={0.7}
+    const ChecklistModal = () => (
+        <Modal
+            transparent
+            visible={showChecklistModal}
+            animationType="fade"
+            onRequestClose={() => setShowChecklistModal(false)}
         >
-            <View style={styles.contentRow}>
-                <View style={styles.mainContent}>
-                    <View style={styles.header}>
-                        <Text style={styles.timeRange}>{timeRange}</Text>
-                        <View style={styles.actions}>
-                            <TouchableOpacity
-                                style={styles.actionButton}
-                                onPress={(e) => {
-                                    e.stopPropagation();
-                                    onToggleComplete?.();
-                                }}
-                            >
-                                <MaterialIcons
-                                    name={task.completed ? "check-circle" : "radio-button-unchecked"}
-                                    size={20}
-                                    color={task.completed ? colors.primary : colors.text.tertiary}
-                                />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    <Text style={[styles.title, task.completed && styles.titleCompleted]}>
-                        {task.title}
-                    </Text>
-
-                    {!compact && (
-                        <Text style={styles.spaceName}>{spaceName}</Text>
-                    )}
-                </View>
-
-                {hasChecklist && !compact && (
-                    <View style={styles.checklistContainer}>
-                        {task.checklist!.map(item => (
+            <TouchableOpacity
+                style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: SPACING.lg }}
+                activeOpacity={1}
+                onPress={() => setShowChecklistModal(false)}
+            >
+                <View style={{ backgroundColor: colors.background.primary, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, maxHeight: '60%' }}>
+                    <Text style={{ fontSize: FONT_SIZES.lg, fontWeight: 'bold', marginBottom: SPACING.md, color: colors.text.primary }}>Checklist</Text>
+                    <ScrollView>
+                        {task.checklist?.map(item => (
                             <TouchableOpacity
                                 key={item.id}
-                                style={styles.checklistItem}
-                                onPress={(e) => {
-                                    e.stopPropagation();
-                                    onToggleChecklistItem?.(item.id);
-                                }}
+                                style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: SPACING.sm, gap: SPACING.sm }}
+                                onPress={() => onToggleChecklistItem?.(item.id)}
                             >
                                 <MaterialIcons
                                     name={item.completed ? "check-box" : "check-box-outline-blank"}
-                                    size={16}
+                                    size={24}
                                     color={item.completed ? colors.text.tertiary : colors.text.secondary}
                                 />
-                                <Text
-                                    style={[
-                                        styles.checklistItemText,
-                                        item.completed && styles.completedChecklistItemText
-                                    ]}
-                                    numberOfLines={1}
-                                >
+                                <Text style={[
+                                    { fontSize: FONT_SIZES.md, color: colors.text.primary, flex: 1 },
+                                    item.completed && { textDecorationLine: 'line-through', opacity: 0.6 }
+                                ]}>
                                     {item.text}
                                 </Text>
                             </TouchableOpacity>
                         ))}
+                    </ScrollView>
+                </View>
+            </TouchableOpacity>
+        </Modal>
+    );
+
+    return (
+        <>
+            <TouchableOpacity
+                style={[styles.container, style]}
+                onPress={onPress}
+                activeOpacity={0.7}
+            >
+                <View style={styles.contentRow}>
+                    <View style={styles.mainContent}>
+                        {!compact && (
+                            <View style={styles.header}>
+                                <Text style={styles.timeRange}>{timeRange}</Text>
+                                <View style={styles.actions}>
+                                    {showCompactChecklist && (
+                                        <TouchableOpacity
+                                            style={styles.checklistBadge}
+                                            onPress={(e) => {
+                                                e.stopPropagation();
+                                                setShowChecklistModal(true);
+                                            }}
+                                        >
+                                            <MaterialIcons name="checklist" size={18} color={colors.primary} />
+                                            <Text style={styles.checklistBadgeText}>
+                                                {task.checklist!.filter(i => i.completed).length}/{task.checklist!.length}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    <TouchableOpacity
+                                        style={styles.actionButton}
+                                        onPress={(e) => {
+                                            e.stopPropagation();
+                                            onToggleComplete?.();
+                                        }}
+                                    >
+                                        <MaterialIcons
+                                            name={task.completed ? "check-circle" : "radio-button-unchecked"}
+                                            size={20}
+                                            color={task.completed ? colors.primary : colors.text.tertiary}
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
+
+                        {compact ? (
+                            <View style={styles.compactContent}>
+                                <Text style={[styles.title, task.completed && styles.titleCompleted]} numberOfLines={1}>
+                                    {task.title}
+                                </Text>
+                                <View style={styles.compactActions}>
+                                    {showCompactChecklist && (
+                                        <TouchableOpacity
+                                            style={styles.checklistBadgeCompact}
+                                            onPress={(e) => {
+                                                e.stopPropagation();
+                                                setShowChecklistModal(true);
+                                            }}
+                                        >
+                                            <MaterialIcons name="checklist" size={18} color={colors.primary} />
+                                            <Text style={styles.checklistBadgeTextCompact}>
+                                                {task.checklist!.filter(i => i.completed).length}/{task.checklist!.length}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    <TouchableOpacity
+                                        style={styles.actionButton}
+                                        onPress={(e) => {
+                                            e.stopPropagation();
+                                            onToggleComplete?.();
+                                        }}
+                                    >
+                                        <MaterialIcons
+                                            name={task.completed ? "check-circle" : "radio-button-unchecked"}
+                                            size={18}
+                                            color={task.completed ? colors.primary : colors.text.tertiary}
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        ) : (
+                            <>
+                                <Text style={[styles.title, task.completed && styles.titleCompleted]} numberOfLines={2}>
+                                    {task.title}
+                                </Text>
+                                <Text style={styles.spaceName}>{spaceName}</Text>
+                            </>
+                        )}
                     </View>
-                )}
-            </View>
-        </TouchableOpacity>
+
+                    {showFullChecklist && (
+                        <View style={styles.checklistContainer}>
+                            {task.checklist!.map(item => (
+                                <TouchableOpacity
+                                    key={item.id}
+                                    style={styles.checklistItem}
+                                    onPress={(e) => {
+                                        e.stopPropagation();
+                                        onToggleChecklistItem?.(item.id);
+                                    }}
+                                >
+                                    <MaterialIcons
+                                        name={item.completed ? "check-box" : "check-box-outline-blank"}
+                                        size={16}
+                                        color={item.completed ? colors.text.tertiary : colors.text.secondary}
+                                    />
+                                    <Text
+                                        style={[
+                                            styles.checklistItemText,
+                                            item.completed && styles.completedChecklistItemText
+                                        ]}
+                                        numberOfLines={1}
+                                    >
+                                        {item.text}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
+                </View>
+            </TouchableOpacity>
+            {hasChecklist && <ChecklistModal />}
+        </>
     );
 }
