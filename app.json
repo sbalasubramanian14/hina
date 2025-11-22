@@ -35,6 +35,12 @@
     "plugins": [
       "expo-location",
       "expo-notifications"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9d8f46af-0bcd-4e7c-a66e-1892dc043c4e"
+      }
+    },
+    "owner": "sbalasubramanian14"
   }
 }
