@@ -7,44 +7,48 @@ on:
       - main
     tags:
       - 'v*'
+  workflow_dispatch: # Allow manual trigger
 
 jobs:
   build:
-    name: Build APK and iOS
+    name: Build APK and iOS with EAS
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
-
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Android APK (Preview)
-        run: |
-          npx eas-cli build --platform android --profile preview --non-interactive --no-wait || echo "Android build queued"
+      - name: Setup EAS CLI
+        run: npm install -g eas-cli
 
-      - name: Build iOS (Preview)  
+      - name: Build Android APK
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          npx eas-cli build --platform ios --profile preview --non-interactive --no-wait || echo "iOS build queued"
+          eas build --platform android --profile preview --non-interactive --no-wait
+          echo "✅ Android build queued successfully"
 
-      - name: Get build status
-        id: build_status
+      - name: Build iOS 
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          echo "Builds have been queued. Check https://expo.dev for build status."
-          echo "::notice::Builds queued successfully. Download from Expo dashboard once complete."
+          eas build --platform ios --profile preview --non-interactive --no-wait
+          echo "✅ iOS build queued successfully"
+
+      - name: Build Summary
+        run: |
+          echo "🎉 Builds queued on Expo servers"
+          echo "📱 Check status: https://expo.dev"
+          echo "⏱️ Builds typically take 10-30 minutes"
 
   release:
     name: Create GitHub Release
@@ -54,7 +58,7 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Create Release
         uses: actions/create-release@v1
@@ -64,19 +68,38 @@ jobs:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
           body: |
-            ## HINA Release
+            ## HINA Release ${{ github.ref }}
             
-            ### Download Instructions
-            1. Go to [Expo.dev](https://expo.dev)
-            2. Sign in with your account
-            3. Navigate to your project builds
-            4. Download the APK (Android) or IPA (iOS) files
+            ### 📱 Download Builds
             
-            ### What's New
-            - Automated builds via GitHub Actions
-            - APK for Android devices
-            - IPA for iOS devices (requires TestFlight or enterprise distribution)
+            Builds are being processed on Expo servers. To download:
             
-            For more details, see the [README](README.md).
+            1. Visit [Expo Dashboard](https://expo.dev)
+            2. Sign in and navigate to this project
+            3. Go to **Builds** section
+            4. Download the completed APK (Android) or IPA (iOS)
+            
+            ### ⏱️ Build Status
+            
+            Builds typically complete in 10-30 minutes. Check the [Expo Dashboard](https://expo.dev) for real-time status.
+            
+            ### 📦 What's Included
+            
+            - **Android APK** - Installable on any Android device
+            - **iOS Build** - For simulator or TestFlight distribution
+            
+            ### 🔧 Installation
+            
+            **Android:**
+            - Download the APK file
+            - Enable "Install from Unknown Sources" in Settings
+            - Install the APK
+            
+            **iOS:**
+            - Requires TestFlight or enterprise distribution
+            - Or use the simulator build for development
+            
+            For more details, see the [README](https://github.com/sbalasubramanian14/hina/blob/main/README.md).
           draft: false
           prerelease: false
+
