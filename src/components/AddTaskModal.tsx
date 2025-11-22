@@ -281,12 +281,17 @@ export default function AddTaskModal({
             const newDate = new Date(targetDate);
             newDate.setHours(h);
             newDate.setMinutes(m);
+            newDate.setSeconds(0); // Zero out seconds
+            newDate.setMilliseconds(0); // Zero out milliseconds
 
             if (showTimePicker === 'start') {
                 setStartTime(newDate);
                 // Auto-adjust end time if it becomes before start time
                 if (newDate >= endTime) {
-                    setEndTime(addHours(newDate, 1));
+                    const newEnd = addHours(newDate, 1);
+                    newEnd.setSeconds(0);
+                    newEnd.setMilliseconds(0);
+                    setEndTime(newEnd);
                 }
             } else {
                 setEndTime(newDate);

@@ -134,12 +134,28 @@ export default function DailyView({
                 if (task.id === otherTask.id || processedTasks.has(otherTask.id)) return;
                 const otherStart = new Date(otherTask.startTime).getTime();
                 const otherEnd = new Date(otherTask.endTime).getTime();
-                if (taskStart < otherEnd && taskEnd > otherStart) {
+
+                const overlaps = taskStart < otherEnd && taskEnd > otherStart;
+                const touchEnd = taskEnd === otherStart;
+                const touchStart = taskStart === otherEnd;
+
+                console.log('Checking overlap:', {
+                    task1: task.title,
+                    task1End: new Date(taskEnd).toISOString(),
+                    task2: otherTask.title,
+                    task2Start: new Date(otherStart).toISOString(),
+                    touchEnd,
+                    touchStart,
+                    overlaps: overlaps && !touchEnd && !touchStart
+                });
+
+                if (taskStart < otherEnd && taskEnd > otherStart && taskEnd !== otherStart && taskStart !== otherEnd) {
                     group.push(otherTask);
                 }
             });
 
             if (group.length > 1) {
+                console.log('❌ Group detected as overlapping:', group.map(t => t.title));
                 overlappingGroups.push(group);
                 group.forEach(t => processedTasks.add(t.id));
             }
