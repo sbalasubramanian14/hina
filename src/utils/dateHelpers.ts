@@ -11,6 +11,8 @@ import {
     endOfMonth,
     eachDayOfInterval,
     parseISO,
+    startOfDay,
+    endOfDay,
 } from 'date-fns';
 
 export const formatTime = (date: Date): string => {
@@ -91,7 +93,14 @@ export const generateRecurringTasks = (task: Task, startDate: Date, endDate: Dat
 };
 
 export const getTasksForDay = (tasks: Task[], date: Date): Task[] => {
-    return tasks.filter(task => isSameDay(new Date(task.startTime), date));
+    const dayStart = startOfDay(date);
+    const dayEnd = endOfDay(date);
+
+    return tasks.filter(task => {
+        const taskStart = new Date(task.startTime);
+        const taskEnd = new Date(task.endTime);
+        return (taskStart < dayEnd && taskEnd > dayStart);
+    });
 };
 
 export const getTasksForWeek = (tasks: Task[], date: Date): Task[] => {

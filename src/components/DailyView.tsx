@@ -5,37 +5,46 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
+    Dimensions,
 } from 'react-native';
 import { SPACING, BORDER_RADIUS, FONT_SIZES, FONT_WEIGHTS } from '../constants/colors';
 import { useTheme } from '../context/ThemeContext';
 import { Task, TaskSpace } from '../types';
 import { getTasksForDay } from '../utils/dateHelpers';
-import { format } from 'date-fns';
+import { format, differenceInMinutes, startOfDay, endOfDay, isSameDay } from 'date-fns';
+import TaskCard from './TaskCard';
 
 interface DailyViewProps {
     date: Date;
     tasks: Task[];
     taskSpaces: TaskSpace[];
     onTaskPress: (task: Task) => void;
+    onToggleComplete?: (task: Task) => void;
+    onToggleChecklistItem?: (taskId: string, itemId: string) => void;
     onPreviousDay: () => void;
     onNextDay: () => void;
     onToday: () => void;
 }
+
+const HOUR_HEIGHT = 60;
+const TIME_COLUMN_WIDTH = 50;
 
 export default function DailyView({
     date,
     tasks,
     taskSpaces,
     onTaskPress,
+    onToggleComplete,
+    onToggleChecklistItem,
     onPreviousDay,
     onNextDay,
     onToday,
 }: DailyViewProps) {
     const { colors } = useTheme();
     const dayTasks = getTasksForDay(tasks, date);
-    const sortedTasks = [...dayTasks].sort(
-        (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-    );
+
+    // Generate hours 0-23
+    const hours = Array.from({ length: 24 }, (_, i) => i);
 
     const getTaskSpaceColor = (taskSpaceId: string): string => {
         const space = taskSpaces.find(ts => ts.id === taskSpaceId);
@@ -44,235 +53,185 @@ export default function DailyView({
 
     const getTaskSpaceName = (taskSpaceId: string): string => {
         const space = taskSpaces.find(ts => ts.id === taskSpaceId);
-        return space?.name || 'Unknown';
+        return space?.name || 'General';
     };
 
-    const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+    const scrollViewRef = React.useRef<ScrollView>(null);
+    const [currentTime, setCurrentTime] = React.useState(new Date());
+
+    React.useEffect(() => {
+        // Update current time every minute
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 60000);
+
+        // Initial scroll to current time if viewing today
+        if (isSameDay(date, new Date())) {
+            const minutes = new Date().getHours() * 60 + new Date().getMinutes();
+            const offset = (minutes / 60) * HOUR_HEIGHT - 100; // Scroll to 100px above current time
+            setTimeout(() => {
+                scrollViewRef.current?.scrollTo({ y: Math.max(0, offset), animated: true });
+            }, 100);
+        }
+
+        return () => clearInterval(timer);
+    }, [date]);
+
+    const getTaskPosition = (task: Task) => {
+        const dayStart = startOfDay(date);
+        const dayEnd = endOfDay(date);
+
+        const taskStart = new Date(task.startTime);
+        const taskEnd = new Date(task.endTime);
+
+        // Clamp start and end times to the current day
+        const effectiveStart = taskStart < dayStart ? dayStart : taskStart;
+        const effectiveEnd = taskEnd > dayEnd ? dayEnd : taskEnd;
+
+        const startMinutes = differenceInMinutes(effectiveStart, dayStart);
+        const durationMinutes = differenceInMinutes(effectiveEnd, effectiveStart);
+
+        const top = (startMinutes / 60) * HOUR_HEIGHT;
+        const height = (durationMinutes / 60) * HOUR_HEIGHT;
+
+        return { top, height };
+    };
+
+    const CurrentTimeLine = () => {
+        if (!isSameDay(date, currentTime)) return null;
+
+        const minutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+        const top = (minutes / 60) * HOUR_HEIGHT;
+
+        return (
+            <View style={[styles.currentTimeLine, { top }]}>
+                <View style={styles.currentTimeDot} />
+            </View>
+        );
+    };
 
     const styles = React.useMemo(() => StyleSheet.create({
         container: {
             flex: 1,
-            padding: SPACING.lg,
-        },
-        navigation: {
             flexDirection: 'row',
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginBottom: SPACING.lg,
         },
-        navButton: {
-            width: 40,
-            height: 40,
-            borderRadius: BORDER_RADIUS.md,
-            backgroundColor: colors.background.secondary,
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginHorizontal: SPACING.xs,
+        timeColumn: {
+            width: TIME_COLUMN_WIDTH,
+            backgroundColor: colors.background.primary,
+            borderRightWidth: 1,
+            borderRightColor: colors.border,
         },
-        navButtonText: {
-            fontSize: FONT_SIZES.xl,
-            color: colors.text.primary,
+        timeLabel: {
+            height: HOUR_HEIGHT,
+            textAlign: 'center',
+            color: colors.text.tertiary,
+            fontSize: FONT_SIZES.xs,
+            transform: [{ translateY: -8 }], // Center vertically with the line
         },
-        todayButton: {
-            paddingHorizontal: SPACING.md,
-            paddingVertical: SPACING.sm,
-            borderRadius: BORDER_RADIUS.md,
-            backgroundColor: colors.primary,
-        },
-        todayButtonText: {
-            color: colors.text.inverse,
-            fontWeight: FONT_WEIGHTS.semibold,
-            fontSize: FONT_SIZES.sm,
-        },
-        tasksList: {
+        tasksColumn: {
             flex: 1,
+            position: 'relative',
+            height: 24 * HOUR_HEIGHT,
+        },
+        gridLine: {
+            height: HOUR_HEIGHT,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+            opacity: 0.3,
+        },
+        taskWrapper: {
+            position: 'absolute',
+            left: SPACING.xs,
+            right: SPACING.xs,
+            zIndex: 1,
+        },
+        currentTimeLine: {
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            height: 2,
+            backgroundColor: colors.error, // Red line
+            zIndex: 10,
+        },
+        currentTimeDot: {
+            position: 'absolute',
+            left: -4,
+            top: -4,
+            width: 10,
+            height: 10,
+            borderRadius: 5,
+            backgroundColor: colors.error,
         },
         emptyState: {
+            padding: SPACING.xl,
             alignItems: 'center',
             justifyContent: 'center',
-            paddingVertical: SPACING.xxl * 2,
-        },
-        emptyStateEmoji: {
-            fontSize: 64,
-            marginBottom: SPACING.md,
+            marginTop: SPACING.xxl,
         },
         emptyStateText: {
-            fontSize: FONT_SIZES.lg,
-            fontWeight: FONT_WEIGHTS.semibold,
-            color: colors.text.primary,
-            marginBottom: SPACING.xs,
-        },
-        emptyStateSubtext: {
-            fontSize: FONT_SIZES.sm,
             color: colors.text.secondary,
-        },
-        taskCard: {
-            flexDirection: 'row',
-            backgroundColor: colors.card,
-            borderRadius: BORDER_RADIUS.md,
-            marginBottom: SPACING.md,
-            overflow: 'hidden',
-            borderWidth: 1,
-            borderColor: colors.border,
-        },
-        taskColorBar: {
-            width: 4,
-        },
-        taskContent: {
-            flex: 1,
-            padding: SPACING.md,
-        },
-        taskHeader: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: SPACING.xs,
-        },
-        taskTime: {
-            fontSize: FONT_SIZES.sm,
-            color: colors.text.secondary,
-            fontWeight: FONT_WEIGHTS.medium,
-        },
-        recurringBadge: {
-            fontSize: FONT_SIZES.sm,
-        },
-        taskTitle: {
             fontSize: FONT_SIZES.md,
-            fontWeight: FONT_WEIGHTS.semibold,
-            color: colors.text.primary,
-            marginBottom: SPACING.sm,
-        },
-        taskDescription: {
-            fontSize: FONT_SIZES.sm,
-            color: colors.text.secondary,
-            marginTop: SPACING.xs,
-        },
-        taskFooter: {
-            flexDirection: 'row',
-            alignItems: 'center',
-        },
-        taskSpaceBadge: {
-            paddingHorizontal: SPACING.sm,
-            paddingVertical: 4,
-            borderRadius: BORDER_RADIUS.sm,
-        },
-        taskSpaceText: {
-            fontSize: FONT_SIZES.xs,
-            color: colors.text.inverse,
-            fontWeight: FONT_WEIGHTS.semibold,
-        },
-        aiCard: {
-            backgroundColor: colors.background.secondary,
-            borderRadius: BORDER_RADIUS.md,
-            padding: SPACING.md,
-            marginTop: SPACING.md,
-            borderWidth: 1,
-            borderColor: colors.border,
-        },
-        aiCardHeader: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: SPACING.xs,
-        },
-        aiCardIcon: {
-            fontSize: FONT_SIZES.lg,
-            marginRight: SPACING.sm,
-        },
-        aiCardTitle: {
-            fontSize: FONT_SIZES.md,
-            fontWeight: FONT_WEIGHTS.semibold,
-            color: colors.text.primary,
-        },
-        aiCardText: {
-            fontSize: FONT_SIZES.sm,
-            color: colors.text.secondary,
+            textAlign: 'center',
         },
     }), [colors]);
 
     return (
-        <View style={styles.container}>
-            {/* Date Navigation */}
-            <View style={styles.navigation}>
-                <TouchableOpacity onPress={onPreviousDay} style={styles.navButton}>
-                    <Text style={styles.navButtonText}>←</Text>
-                </TouchableOpacity>
-
-                {!isToday && (
-                    <TouchableOpacity onPress={onToday} style={styles.todayButton}>
-                        <Text style={styles.todayButtonText}>Today</Text>
-                    </TouchableOpacity>
-                )}
-
-                <TouchableOpacity onPress={onNextDay} style={styles.navButton}>
-                    <Text style={styles.navButtonText}>→</Text>
-                </TouchableOpacity>
-            </View>
-
-            {/* Tasks List */}
-            <ScrollView style={styles.tasksList}>
-                {sortedTasks.length === 0 ? (
-                    <View style={styles.emptyState}>
-                        <Text style={styles.emptyStateEmoji}>📅</Text>
-                        <Text style={styles.emptyStateText}>No tasks scheduled</Text>
-                        <Text style={styles.emptyStateSubtext}>Tap + to add a task</Text>
-                    </View>
-                ) : (
-                    sortedTasks.map((task) => {
-                        const taskColor = getTaskSpaceColor(task.taskSpaceId);
-                        const taskSpaceName = getTaskSpaceName(task.taskSpaceId);
-                        const startTime = format(new Date(task.startTime), 'HH:mm');
-                        const endTime = format(new Date(task.endTime), 'HH:mm');
-
-                        return (
-                            <TouchableOpacity
-                                key={task.id}
-                                style={styles.taskCard}
-                                onPress={() => onTaskPress(task)}
-                            >
-                                <View style={[styles.taskColorBar, { backgroundColor: taskColor }]} />
-
-                                <View style={styles.taskContent}>
-                                    <View style={styles.taskHeader}>
-                                        <Text style={styles.taskTime}>
-                                            {startTime} - {endTime}
-                                        </Text>
-                                        {task.isRecurring && (
-                                            <Text style={styles.recurringBadge}>🔄</Text>
-                                        )}
-                                    </View>
-
-                                    <Text style={styles.taskTitle}>{task.title}</Text>
-
-                                    <View style={styles.taskFooter}>
-                                        <View style={[styles.taskSpaceBadge, { backgroundColor: taskColor }]}>
-                                            <Text style={styles.taskSpaceText}>{taskSpaceName}</Text>
-                                        </View>
-                                    </View>
-
-                                    {task.description && (
-                                        <Text style={styles.taskDescription} numberOfLines={2}>
-                                            {task.description}
-                                        </Text>
-                                    )}
-                                </View>
-                            </TouchableOpacity>
-                        );
-                    })
-                )}
-
-                {/* AI Suggestions Card */}
-                {sortedTasks.length > 0 && (
-                    <View style={styles.aiCard}>
-                        <View style={styles.aiCardHeader}>
-                            <Text style={styles.aiCardIcon}>🤖</Text>
-                            <Text style={styles.aiCardTitle}>AI Assistant</Text>
-                        </View>
-                        <Text style={styles.aiCardText}>
-                            Tap to get AI suggestions for your day
+        <ScrollView
+            ref={scrollViewRef}
+            style={{ flex: 1 }}
+        >
+            <View style={styles.container}>
+                {/* Time Column */}
+                <View style={styles.timeColumn}>
+                    {hours.map((hour) => (
+                        <Text key={hour} style={styles.timeLabel}>
+                            {`${hour.toString().padStart(2, '0')}:00`}
                         </Text>
-                    </View>
-                )}
-            </ScrollView>
-        </View>
+                    ))}
+                </View>
+
+                {/* Tasks Column */}
+                <View style={styles.tasksColumn}>
+                    {/* Grid Lines */}
+                    {hours.map((hour) => (
+                        <View key={`grid-${hour}`} style={styles.gridLine} />
+                    ))}
+
+                    {/* Current Time Line */}
+                    <CurrentTimeLine />
+
+                    {/* Tasks */}
+                    {dayTasks.map((task) => {
+                        const { top, height } = getTaskPosition(task);
+                        return (
+                            <View
+                                key={task.id}
+                                style={[
+                                    styles.taskWrapper,
+                                    { top, height: Math.max(height, 20) } // Minimum height reduced
+                                ]}
+                            >
+                                <TaskCard
+                                    task={task}
+                                    spaceColor={getTaskSpaceColor(task.taskSpaceId)}
+                                    spaceName={getTaskSpaceName(task.taskSpaceId)}
+                                    onPress={() => onTaskPress(task)}
+                                    onToggleComplete={() => onToggleComplete?.(task)}
+                                    onToggleChecklistItem={(itemId) => onToggleChecklistItem?.(task.id, itemId)}
+                                    compact={height < 60} // Use compact mode for short tasks
+                                    style={{ flex: 1 }}
+                                />
+                            </View>
+                        );
+                    })}
+
+                    {dayTasks.length === 0 && (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyStateText}>No tasks scheduled for today</Text>
+                        </View>
+                    )}
+                </View>
+            </View>
+        </ScrollView>
     );
 }

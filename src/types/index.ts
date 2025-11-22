@@ -27,6 +27,12 @@ export interface Task {
   reminderMinutesBefore?: number;
   completed: boolean;
   createdAt: string;
+  updatedAt?: string;
+  checklist?: {
+    id: string;
+    text: string;
+    completed: boolean;
+  }[];
   metadata?: Record<string, any>; // For storing task-specific data
 }
 

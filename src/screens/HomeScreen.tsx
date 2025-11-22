@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import {
     View,
-    Text,
     ScrollView,
     TouchableOpacity,
     StyleSheet,
     RefreshControl,
 } from 'react-native';
-import { SPACING, BORDER_RADIUS, FONT_SIZES, FONT_WEIGHTS } from '../constants/colors';
+import { SPACING } from '../constants/colors';
 import { useTheme } from '../context/ThemeContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Task, TaskSpace } from '../types';
-import { getTasks, getTaskSpaces } from '../services/storage';
-import { format, addDays, subDays } from 'date-fns';
+import { getTasks, getTaskSpaces, addTask, saveTasks, deleteTask } from '../services/storage';
+import { addDays, subDays, addWeeks, subWeeks, addMonths, subMonths } from 'date-fns';
 import DailyView from '../components/DailyView';
 import MonthlyView from '../components/MonthlyView';
-
-type ViewMode = 'day' | 'month';
+import WeeklyView from '../components/WeeklyView';
+import ViewTabs, { ViewMode } from '../components/ViewTabs';
+import DateNavigation from '../components/DateNavigation';
+import AddTaskModal from '../components/AddTaskModal';
 
 export default function HomeScreen({ navigation }: any) {
     const { colors } = useTheme();
@@ -25,6 +26,8 @@ export default function HomeScreen({ navigation }: any) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [taskSpaces, setTaskSpaces] = useState<TaskSpace[]>([]);
     const [refreshing, setRefreshing] = useState(false);
+    const [isAddTaskVisible, setIsAddTaskVisible] = useState(false);
+    const [editingTask, setEditingTask] = useState<Task | null>(null);
 
     useEffect(() => {
         loadData();
@@ -49,12 +52,32 @@ export default function HomeScreen({ navigation }: any) {
         setRefreshing(false);
     };
 
-    const handlePreviousDay = () => {
-        setSelectedDate(prev => subDays(prev, 1));
+    const handlePrevious = () => {
+        switch (viewMode) {
+            case 'day':
+                setSelectedDate(prev => subDays(prev, 1));
+                break;
+            case 'week':
+                setSelectedDate(prev => subWeeks(prev, 1));
+                break;
+            case 'month':
+                setSelectedDate(prev => subMonths(prev, 1));
+                break;
+        }
     };
 
-    const handleNextDay = () => {
-        setSelectedDate(prev => addDays(prev, 1));
+    const handleNext = () => {
+        switch (viewMode) {
+            case 'day':
+                setSelectedDate(prev => addDays(prev, 1));
+                break;
+            case 'week':
+                setSelectedDate(prev => addWeeks(prev, 1));
+                break;
+            case 'month':
+                setSelectedDate(prev => addMonths(prev, 1));
+                break;
+        }
     };
 
     const handleToday = () => {
@@ -62,11 +85,115 @@ export default function HomeScreen({ navigation }: any) {
     };
 
     const handleAddTask = () => {
-        console.log('Add task clicked');
+        setEditingTask(null);
+        setIsAddTaskVisible(true);
+    };
+
+    const handleSaveTask = async (taskData: Partial<Task>) => {
+        try {
+            if (editingTask) {
+                // Update existing task
+                const updatedTask: Task = {
+                    ...editingTask,
+                    ...taskData,
+                    updatedAt: new Date().toISOString(),
+                } as Task;
+
+                // Update local state immediately
+                const updatedTasks = tasks.map(t => t.id === updatedTask.id ? updatedTask : t);
+                setTasks(updatedTasks);
+
+                // Persist changes
+                await saveTasks(updatedTasks);
+            } else {
+                // Create new task
+                const newTask: Task = {
+                    id: Date.now().toString(),
+                    title: taskData.title!,
+                    description: taskData.description || '',
+                    startTime: taskData.startTime!,
+                    endTime: taskData.endTime!,
+                    taskSpaceId: taskData.taskSpaceId!,
+                    completed: false,
+                    isRecurring: false,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                };
+
+                // Update local state immediately
+                setTasks(prev => [...prev, newTask]);
+
+                // Persist changes
+                await addTask(newTask);
+            }
+
+            setIsAddTaskVisible(false);
+        } catch (error) {
+            console.error('Error saving task:', error);
+            await loadData(); // Revert on error
+        }
+    };
+
+    const handleDeleteTask = async (taskId: string) => {
+        try {
+            // Update local state immediately
+            setTasks(prev => prev.filter(t => t.id !== taskId));
+
+            // Persist changes
+            await deleteTask(taskId);
+            setIsAddTaskVisible(false);
+        } catch (error) {
+            console.error('Error deleting task:', error);
+            await loadData(); // Revert on error
+        }
+    };
+
+    const handleToggleComplete = async (task: Task) => {
+        try {
+            const updatedTask = { ...task, completed: !task.completed, updatedAt: new Date().toISOString() };
+
+            // Optimistic update
+            const updatedTasks = tasks.map(t => t.id === task.id ? updatedTask : t);
+            setTasks(updatedTasks);
+
+            // Persist changes
+            await saveTasks(updatedTasks);
+        } catch (error) {
+            console.error('Error toggling task:', error);
+            await loadData(); // Revert on error
+        }
+    };
+
+    const handleToggleChecklistItem = async (taskId: string, itemId: string) => {
+        try {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task || !task.checklist) return;
+
+            const updatedChecklist = task.checklist.map(item =>
+                item.id === itemId ? { ...item, completed: !item.completed } : item
+            );
+
+            const updatedTask = {
+                ...task,
+                checklist: updatedChecklist,
+                updatedAt: new Date().toISOString()
+            };
+
+            // Optimistic update
+            const updatedTasks = tasks.map(t => t.id === taskId ? updatedTask : t);
+            setTasks(updatedTasks);
+
+            // Persist changes
+            await saveTasks(updatedTasks);
+        } catch (error) {
+            console.error('Error toggling checklist item:', error);
+            await loadData(); // Revert on error
+        }
     };
 
     const handleTaskPress = (task: Task) => {
-        console.log('Task pressed:', task.title);
+        setEditingTask(task);
+        setIsAddTaskVisible(true);
     };
 
     const handleDateSelect = (date: Date) => {
@@ -74,51 +201,10 @@ export default function HomeScreen({ navigation }: any) {
         setViewMode('day');
     };
 
-    // Use useMemo to recreate styles when colors change
     const styles = React.useMemo(() => StyleSheet.create({
         container: {
             flex: 1,
             backgroundColor: colors.background.primary,
-        },
-        header: {
-            padding: SPACING.lg,
-            paddingTop: SPACING.xxl,
-            backgroundColor: colors.background.primary,
-        },
-        headerDate: {
-            fontSize: FONT_SIZES.xl,
-            fontWeight: FONT_WEIGHTS.bold,
-            color: colors.text.primary,
-        },
-        headerYear: {
-            fontSize: FONT_SIZES.md,
-            color: colors.text.secondary,
-            marginTop: SPACING.xs,
-        },
-        viewSelector: {
-            flexDirection: 'row',
-            paddingHorizontal: SPACING.lg,
-            marginBottom: SPACING.md,
-        },
-        viewButton: {
-            flex: 1,
-            paddingVertical: SPACING.sm,
-            paddingHorizontal: SPACING.md,
-            borderRadius: BORDER_RADIUS.lg,
-            backgroundColor: colors.background.secondary,
-            alignItems: 'center',
-            marginRight: SPACING.sm,
-        },
-        viewButtonActive: {
-            backgroundColor: colors.primary,
-        },
-        viewButtonText: {
-            fontSize: FONT_SIZES.sm,
-            fontWeight: FONT_WEIGHTS.semibold,
-            color: colors.text.secondary,
-        },
-        viewButtonTextActive: {
-            color: colors.text.inverse,
         },
         content: {
             flex: 1,
@@ -126,69 +212,62 @@ export default function HomeScreen({ navigation }: any) {
         fab: {
             position: 'absolute',
             right: SPACING.lg,
-            bottom: SPACING.xxl,
+            bottom: SPACING.lg,
             width: 56,
             height: 56,
             borderRadius: 28,
             backgroundColor: colors.primary,
             justifyContent: 'center',
             alignItems: 'center',
+            elevation: 4,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 4,
         },
     }), [colors]);
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <View>
-                    <Text style={styles.headerDate}>
-                        {format(selectedDate, 'EEEE, MMMM dd')}
-                    </Text>
-                    <Text style={styles.headerYear}>{format(selectedDate, 'yyyy')}</Text>
-                </View>
-            </View>
+            <View style={styles.content}>
+                {/* View Tabs */}
+                <ViewTabs selectedView={viewMode} onViewChange={setViewMode} />
 
-            <View style={styles.viewSelector}>
-                <TouchableOpacity
-                    style={[styles.viewButton, viewMode === 'day' && styles.viewButtonActive]}
-                    onPress={() => setViewMode('day')}
-                >
-                    <Text style={[
-                        styles.viewButtonText,
-                        viewMode === 'day' && styles.viewButtonTextActive
-                    ]}>
-                        Day
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.viewButton, viewMode === 'month' && styles.viewButtonActive]}
-                    onPress={() => setViewMode('month')}
-                >
-                    <Text style={[
-                        styles.viewButtonText,
-                        viewMode === 'month' && styles.viewButtonTextActive
-                    ]}>
-                        Month
-                    </Text>
-                </TouchableOpacity>
-            </View>
+                {/* Date Navigation */}
+                <DateNavigation
+                    date={selectedDate}
+                    onPrevious={handlePrevious}
+                    onNext={handleNext}
+                    onToday={handleToday}
+                />
 
-            <ScrollView
-                style={styles.content}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                }
-            >
-                {viewMode === 'day' ? (
+                {/* Views */}
+                {viewMode === 'day' && (
                     <DailyView
                         date={selectedDate}
                         tasks={tasks}
                         taskSpaces={taskSpaces}
                         onTaskPress={handleTaskPress}
-                        onPreviousDay={handlePreviousDay}
-                        onNextDay={handleNextDay}
+                        onToggleComplete={handleToggleComplete}
+                        onToggleChecklistItem={handleToggleChecklistItem}
+                        onPreviousDay={handlePrevious}
+                        onNextDay={handleNext}
                         onToday={handleToday}
                     />
-                ) : (
+                )}
+
+                {viewMode === 'week' && (
+                    <WeeklyView
+                        date={selectedDate}
+                        tasks={tasks}
+                        taskSpaces={taskSpaces}
+                        onTaskPress={handleTaskPress}
+                        onToggleComplete={handleToggleComplete}
+                        onDateSelect={handleDateSelect}
+                    />
+                )}
+
+                {viewMode === 'month' && (
                     <MonthlyView
                         date={selectedDate}
                         tasks={tasks}
@@ -197,11 +276,23 @@ export default function HomeScreen({ navigation }: any) {
                         onMonthChange={setSelectedDate}
                     />
                 )}
-            </ScrollView>
+            </View>
 
+            {/* FAB for adding tasks */}
             <TouchableOpacity style={styles.fab} onPress={handleAddTask}>
-                <MaterialIcons name="add" size={32} color={colors.text.inverse} />
+                <MaterialIcons name="add" size={28} color="#FFFFFF" />
             </TouchableOpacity>
+
+            {/* Add Task Modal */}
+            <AddTaskModal
+                visible={isAddTaskVisible}
+                onClose={() => setIsAddTaskVisible(false)}
+                onSave={handleSaveTask}
+                onDelete={handleDeleteTask}
+                taskSpaces={taskSpaces}
+                initialDate={selectedDate}
+                task={editingTask}
+            />
         </View>
     );
 }

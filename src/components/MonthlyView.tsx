@@ -4,12 +4,15 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
+    Dimensions,
+    ScrollView,
 } from 'react-native';
 import { SPACING, BORDER_RADIUS, FONT_SIZES, FONT_WEIGHTS } from '../constants/colors';
 import { useTheme } from '../context/ThemeContext';
 import { Task, TaskSpace } from '../types';
 import { getMonthDays, getTasksForDay } from '../utils/dateHelpers';
-import { format, isSameMonth, addMonths, subMonths } from 'date-fns';
+import { format, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
+import { MaterialIcons } from '@expo/vector-icons';
 
 interface MonthlyViewProps {
     date: Date;
@@ -18,6 +21,8 @@ interface MonthlyViewProps {
     onDateSelect: (date: Date) => void;
     onMonthChange: (date: Date) => void;
 }
+
+const WEEK_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export default function MonthlyView({
     date,
@@ -38,167 +43,139 @@ export default function MonthlyView({
         onMonthChange(addMonths(date, 1));
     };
 
-    const getTaskCountForDay = (day: Date): number => {
-        return getTasksForDay(tasks, day).length;
-    };
-
-    const hasTasksOnDay = (day: Date): boolean => {
-        return getTasksForDay(tasks, day).length > 0;
+    const getTaskDots = (day: Date) => {
+        const dayTasks = getTasksForDay(tasks, day);
+        // Take up to 3 tasks to show as dots
+        return dayTasks.slice(0, 3).map(task => {
+            const space = taskSpaces.find(ts => ts.id === task.taskSpaceId);
+            return space?.color || colors.primary;
+        });
     };
 
     const styles = React.useMemo(() => StyleSheet.create({
         container: {
             flex: 1,
-            backgroundColor: colors.background.primary,
+            padding: SPACING.md,
         },
-        monthHeader: {
+        header: {
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
-            paddingHorizontal: SPACING.lg,
-            paddingVertical: SPACING.md,
-        },
-        navButton: {
-            padding: SPACING.sm,
-        },
-        navButtonText: {
-            fontSize: FONT_SIZES.xl,
-            color: colors.text.primary,
+            marginBottom: SPACING.lg,
         },
         monthTitle: {
             fontSize: FONT_SIZES.lg,
             fontWeight: FONT_WEIGHTS.bold,
             color: colors.text.primary,
         },
-        weekdayHeader: {
-            flexDirection: 'row',
-            paddingHorizontal: SPACING.lg,
-            paddingBottom: SPACING.sm,
+        navButton: {
+            padding: SPACING.sm,
         },
-        weekdayCell: {
-            flex: 1,
-            alignItems: 'center',
-        },
-        weekdayText: {
-            fontSize: FONT_SIZES.xs,
-            fontWeight: FONT_WEIGHTS.semibold,
-            color: colors.text.secondary,
-        },
-        calendarGrid: {
+        grid: {
             flexDirection: 'row',
             flexWrap: 'wrap',
-            paddingHorizontal: SPACING.lg,
+        },
+        weekDay: {
+            width: '14.28%',
+            alignItems: 'center',
+            marginBottom: SPACING.md,
+        },
+        weekDayText: {
+            fontSize: FONT_SIZES.sm,
+            color: colors.text.tertiary,
+            fontWeight: FONT_WEIGHTS.medium,
         },
         dayCell: {
             width: '14.28%',
             aspectRatio: 1,
             alignItems: 'center',
             justifyContent: 'center',
-            padding: SPACING.xs,
+            marginBottom: SPACING.xs,
+            borderRadius: BORDER_RADIUS.full,
         },
-        todayCell: {
-            backgroundColor: colors.primary,
-            borderRadius: BORDER_RADIUS.sm,
-            borderWidth: 2,
-            borderColor: colors.primary,
+        currentMonthDay: {
+            // Background can be added if selected
         },
-        otherMonthCell: {
+        otherMonthDay: {
             opacity: 0.3,
         },
-        dayNumber: {
-            fontSize: FONT_SIZES.sm,
-            color: colors.text.primary,
-            fontWeight: FONT_WEIGHTS.medium,
+        todayCell: {
+            backgroundColor: colors.primary + '15', // 15% opacity
+            borderWidth: 1,
+            borderColor: colors.primary,
         },
-        todayText: {
+        selectedCell: {
+            backgroundColor: colors.primary,
+        },
+        dayText: {
+            fontSize: FONT_SIZES.md,
+            color: colors.text.primary,
+            marginBottom: 4,
+        },
+        selectedDayText: {
             color: colors.text.inverse,
             fontWeight: FONT_WEIGHTS.bold,
         },
-        otherMonthText: {
-            color: colors.text.tertiary,
+        dotsContainer: {
+            flexDirection: 'row',
+            gap: 3,
+            height: 6,
         },
-        taskIndicator: {
-            position: 'absolute',
-            bottom: 2,
-            backgroundColor: colors.primary,
-            borderRadius: BORDER_RADIUS.sm,
-            paddingHorizontal: SPACING.xs,
-            minWidth: 16,
-        },
-        taskCount: {
-            fontSize: 10,
-            color: colors.text.inverse,
-            textAlign: 'center',
+        dot: {
+            width: 6,
+            height: 6,
+            borderRadius: 3,
         },
     }), [colors]);
 
     return (
-        <View style={styles.container}>
-            {/* Month Navigation */}
-            <View style={styles.monthHeader}>
-                <TouchableOpacity onPress={handlePreviousMonth} style={styles.navButton}>
-                    <Text style={styles.navButtonText}>←</Text>
-                </TouchableOpacity>
-
-                <Text style={styles.monthTitle}>
-                    {format(date, 'MMMM yyyy')}
-                </Text>
-
-                <TouchableOpacity onPress={handleNextMonth} style={styles.navButton}>
-                    <Text style={styles.navButtonText}>→</Text>
-                </TouchableOpacity>
-            </View>
-
-            {/* Weekday Headers */}
-            <View style={styles.weekdayHeader}>
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                    <View key={day} style={styles.weekdayCell}>
-                        <Text style={styles.weekdayText}>{day}</Text>
+        <ScrollView style={styles.container}>
+            {/* Week Days Header */}
+            <View style={styles.grid}>
+                {WEEK_DAYS.map(day => (
+                    <View key={day} style={styles.weekDay}>
+                        <Text style={styles.weekDayText}>{day}</Text>
                     </View>
                 ))}
             </View>
 
             {/* Calendar Grid */}
-            <View style={styles.calendarGrid}>
-                {/* Add empty cells for days before month starts */}
-                {Array.from({ length: monthDays[0].getDay() }).map((_, index) => (
-                    <View key={`empty-${index}`} style={styles.dayCell} />
-                ))}
-
-                {/* Month days */}
-                {monthDays.map((day) => {
-                    const isToday = format(day, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
+            <View style={styles.grid}>
+                {monthDays.map((day, index) => {
                     const isCurrentMonth = isSameMonth(day, date);
-                    const taskCount = getTaskCountForDay(day);
-                    const hasTasks = hasTasksOnDay(day);
+                    const isToday = isSameDay(day, today);
+                    const taskDots = getTaskDots(day);
 
                     return (
                         <TouchableOpacity
                             key={day.toISOString()}
                             style={[
                                 styles.dayCell,
+                                !isCurrentMonth && styles.otherMonthDay,
                                 isToday && styles.todayCell,
-                                !isCurrentMonth && styles.otherMonthCell,
                             ]}
                             onPress={() => onDateSelect(day)}
                         >
                             <Text style={[
-                                styles.dayNumber,
-                                isToday && styles.todayText,
-                                !isCurrentMonth && styles.otherMonthText,
+                                styles.dayText,
+                                isToday && styles.selectedDayText
                             ]}>
                                 {format(day, 'd')}
                             </Text>
 
-                            {hasTasks && (
-                                <View style={styles.taskIndicator}>
-                                    <Text style={styles.taskCount}>{taskCount}</Text>
-                                </View>
-                            )}
+                            {/* Task Dots */}
+                            <View style={styles.dotsContainer}>
+                                {taskDots.map((color, i) => (
+                                    <View
+                                        key={i}
+                                        style={[styles.dot, { backgroundColor: color }]}
+                                    />
+                                ))}
+                            </View>
                         </TouchableOpacity>
                     );
                 })}
             </View>
-        </View>
+        </ScrollView>
     );
 }
