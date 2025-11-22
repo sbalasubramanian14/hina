@@ -1,0 +1,77 @@
+export const PREDEFINED_INTERESTS = {
+    Technology: [
+        'Artificial Intelligence',
+        'Machine Learning',
+        'Web Development',
+        'Mobile Development',
+        'Cloud Computing',
+        'Cybersecurity',
+        'Data Science',
+        'Blockchain',
+    ],
+    Sports: [
+        'Cricket',
+        'Football',
+        'Basketball',
+        'Tennis',
+        'Badminton',
+        'Chess',
+        'Yoga',
+        'Gym & Fitness',
+    ],
+    Arts: [
+        'Music',
+        'Movies & TV Shows',
+        'Books & Reading',
+        'Photography',
+        'Painting',
+        'Writing',
+        'Theater',
+    ],
+    Lifestyle: [
+        'Cooking',
+        'Travel',
+        'Fashion',
+        'Gardening',
+        'Interior Design',
+        'Health & Wellness',
+    ],
+    Learning: [
+        'Languages',
+        'Science',
+        'History',
+        'Philosophy',
+        'Mathematics',
+        'Business',
+        'Personal Finance',
+    ],
+    Entertainment: [
+        'Gaming',
+        'Podcasts',
+        'Stand-up Comedy',
+        'Anime & Manga',
+        'Board Games',
+    ],
+};
+
+export const TASK_SPACE_COLORS = {
+    blue: '#2563EB',
+    red: '#EF4444',
+    yellow: '#F59E0B',
+    green: '#10B981',
+    purple: '#8B5CF6',
+    pink: '#EC4899',
+    indigo: '#6366F1',
+    teal: '#14B8A6',
+};
+
+export const TASK_SPACE_ICONS = [
+    'briefcase',
+    'heart',
+    'book',
+    'dumbbell',
+    'coffee',
+    'music',
+    'plane',
+    'star',
+];

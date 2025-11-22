@@ -39,3 +39,9 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Antigravity artifacts (exclude all md files except README.md)
+.gemini/
+task.md
+implementation_plan.md
+walkthrough.md
