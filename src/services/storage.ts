@@ -75,6 +75,21 @@ export const saveTaskSpaces = async (taskSpaces: TaskSpace[]): Promise<void> => 
     }
 };
 
+export const saveTaskSpace = async (taskSpace: TaskSpace): Promise<void> => {
+    const taskSpaces = await getTaskSpaces();
+    const index = taskSpaces.findIndex(ts => ts.id === taskSpace.id);
+
+    if (index !== -1) {
+        // Update existing
+        taskSpaces[index] = taskSpace;
+    } else {
+        // Add new
+        taskSpaces.push(taskSpace);
+    }
+
+    await saveTaskSpaces(taskSpaces);
+};
+
 export const addTaskSpace = async (taskSpace: TaskSpace): Promise<void> => {
     const taskSpaces = await getTaskSpaces();
     taskSpaces.push(taskSpace);
