@@ -63,7 +63,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps = {})
     const handleReOnboard = () => {
         Alert.alert(
             'Edit Profile',
-            'This will let you update your name, interests, and API key. The app will reload.',
+            'Update your name, interests, and API key.',
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -74,14 +74,10 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps = {})
                             if (profile) {
                                 const updated = { ...profile, onboardingCompleted: false };
                                 await saveUserProfile(updated);
-                                // Reload the app by forcing a re-render
-                                // The easiest way is to use Updates.reloadAsync() but for now,
-                                // we'll just show an alert and ask user to reload
-                                Alert.alert(
-                                    'Success',
-                                    'Please reload the app (press R in terminal or shake device) to enter onboarding.',
-                                    [{ text: 'OK' }]
-                                );
+                                // Navigate to onboarding directly
+                                if (navigation) {
+                                    navigation.navigate('onboarding');
+                                }
                             }
                         } catch (error) {
                             console.error('Error resetting onboarding:', error);
@@ -98,19 +94,10 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps = {})
             flex: 1,
             backgroundColor: colors.background.primary,
         },
-        header: {
-            padding: SPACING.lg,
-            paddingTop: SPACING.xxl,
-            paddingBottom: SPACING.md,
-        },
-        headerTitle: {
-            fontSize: FONT_SIZES.xxxl,
-            fontWeight: FONT_WEIGHTS.bold,
-            color: colors.text.primary,
-        },
         section: {
             paddingHorizontal: SPACING.lg,
             marginBottom: SPACING.lg,
+            marginTop: SPACING.lg,
         },
         sectionTitle: {
             fontSize: FONT_SIZES.md,
@@ -240,11 +227,6 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps = {})
 
     return (
         <ScrollView style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Settings</Text>
-            </View>
-
             {/* User Profile Section */}
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Profile</Text>

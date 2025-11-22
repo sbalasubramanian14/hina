@@ -7,6 +7,7 @@ import {
     StyleSheet,
 } from 'react-native';
 import { SPACING, BORDER_RADIUS, FONT_SIZES, FONT_WEIGHTS } from '../constants/colors';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { getTaskSpaces, getTasks } from '../services/storage';
 import type { TaskSpace, Task } from '../types';
@@ -46,33 +47,10 @@ export default function TaskSpacesScreen() {
             flex: 1,
             backgroundColor: colors.background.primary,
         },
-        header: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: SPACING.lg,
-            paddingTop: SPACING.xxl,
-            paddingBottom: SPACING.md,
-        },
-        headerTitle: {
-            fontSize: FONT_SIZES.xxxl,
-            fontWeight: FONT_WEIGHTS.bold,
-            color: colors.text.primary,
-        },
-        addButton: {
-            backgroundColor: colors.primary,
-            paddingHorizontal: SPACING.md,
-            paddingVertical: SPACING.sm,
-            borderRadius: BORDER_RADIUS.md,
-        },
-        addButtonText: {
-            color: colors.text.inverse,
-            fontSize: FONT_SIZES.sm,
-            fontWeight: FONT_WEIGHTS.semibold,
-        },
         content: {
             flex: 1,
             paddingHorizontal: SPACING.lg,
+            paddingTop: SPACING.lg,
         },
         emptyState: {
             alignItems: 'center',
@@ -139,18 +117,26 @@ export default function TaskSpacesScreen() {
             color: colors.text.tertiary,
             marginLeft: SPACING.sm,
         },
+        fab: {
+            position: 'absolute',
+            right: SPACING.lg,
+            bottom: SPACING.lg,
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: colors.primary,
+            justifyContent: 'center',
+            alignItems: 'center',
+            elevation: 4,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 4,
+        },
     }), [colors]);
 
     return (
         <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Task Spaces</Text>
-                <TouchableOpacity style={styles.addButton} onPress={handleAddSpace}>
-                    <Text style={styles.addButtonText}>+ New Space</Text>
-                </TouchableOpacity>
-            </View>
-
             {/* Task Spaces List */}
             <ScrollView style={styles.content}>
                 {taskSpaces.length === 0 ? (
@@ -194,6 +180,11 @@ export default function TaskSpacesScreen() {
                     })
                 )}
             </ScrollView>
+
+            {/* FAB for adding new task space */}
+            <TouchableOpacity style={styles.fab} onPress={handleAddSpace}>
+                <MaterialIcons name="add" size={28} color="#FFFFFF" />
+            </TouchableOpacity>
         </View>
     );
 }

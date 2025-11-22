@@ -42,6 +42,11 @@ function AppContent() {
         console.log('📱 isOnboarded state updated. App should navigate to main app now.');
     };
 
+    const resetOnboarding = () => {
+        console.log('📱 Resetting onboarding...');
+        setIsOnboarded(false);
+    };
+
     if (isLoading) {
         console.log('⏳ App is loading...');
         return (
@@ -64,7 +69,7 @@ function AppContent() {
             {isOnboarded ? (
                 <>
                     {console.log('✅ Rendering CustomDrawerNavigator (main app)')}
-                    <CustomDrawerNavigator />
+                    <CustomDrawerNavigator onResetOnboarding={resetOnboarding} />
                 </>
             ) : (
                 <>

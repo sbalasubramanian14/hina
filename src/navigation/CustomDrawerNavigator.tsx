@@ -27,7 +27,11 @@ const drawerItems: DrawerItem[] = [
     { name: 'settings', label: 'Settings', icon: 'settings', component: SettingsScreen },
 ];
 
-export default function CustomDrawerNavigator() {
+interface CustomDrawerNavigatorProps {
+    onResetOnboarding?: () => void;
+}
+
+export default function CustomDrawerNavigator({ onResetOnboarding }: CustomDrawerNavigatorProps) {
     const { colors } = useTheme();
     const [activeScreen, setActiveScreen] = useState<ScreenName>('home');
     const [drawerOpen, setDrawerOpen] = useState(false);
@@ -66,7 +70,11 @@ export default function CustomDrawerNavigator() {
 
     const navigation = {
         navigate: (screenName: string, params?: any) => {
-            console.log(`Navigation to ${screenName} not implemented yet`);
+            if (screenName === 'onboarding' && onResetOnboarding) {
+                onResetOnboarding();
+            } else {
+                console.log(`Navigation to ${screenName} not implemented yet`);
+            }
         },
     };
 
@@ -80,9 +88,24 @@ export default function CustomDrawerNavigator() {
             flex: 1,
         },
         header: {
+            flexDirection: 'row',
+            alignItems: 'center',
             paddingHorizontal: SPACING.lg,
             paddingVertical: SPACING.md,
             backgroundColor: colors.background.primary,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+        },
+        headerContent: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            flex: 1,
+        },
+        headerTitle: {
+            fontSize: FONT_SIZES.xl,
+            fontWeight: FONT_WEIGHTS.bold,
+            color: colors.text.primary,
+            marginLeft: SPACING.md,
         },
         menuButton: {
             width: 40,
@@ -169,11 +192,14 @@ export default function CustomDrawerNavigator() {
         <SafeAreaView style={styles.container} edges={['top']}>
             {/* Main Content */}
             <View style={styles.mainContent}>
-                {/* Header with menu button */}
+                {/* Header with menu button and page title */}
                 <View style={styles.header}>
                     <TouchableOpacity style={styles.menuButton} onPress={toggleDrawer}>
                         <MaterialIcons name="menu" size={28} color={colors.text.primary} />
                     </TouchableOpacity>
+                    <Text style={styles.headerTitle}>
+                        {drawerItems.find(item => item.name === activeScreen)?.label || 'HINA'}
+                    </Text>
                 </View>
 
                 {/* Screen Content */}
