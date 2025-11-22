@@ -6,6 +6,7 @@ import {
     ScrollView,
     TouchableOpacity,
     Modal,
+    PanResponder,
 } from 'react-native';
 import { SPACING, BORDER_RADIUS, FONT_SIZES } from '../constants/colors';
 import { useTheme } from '../context/ThemeContext';
@@ -42,6 +43,8 @@ export default function DailyView({
     onTaskPress,
     onToggleComplete,
     onToggleChecklistItem,
+    onPreviousDay,
+    onNextDay,
 }: DailyViewProps) {
     const { colors } = useTheme();
     const dayTasks = getTasksForDay(tasks, date);
@@ -77,6 +80,25 @@ export default function DailyView({
 
         return () => clearInterval(timer);
     }, [date]);
+
+    // Swipe gesture handler
+    const panResponder = React.useMemo(
+        () => PanResponder.create({
+            onMoveShouldSetPanResponder: (_, gestureState) => {
+                return Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+            },
+            onPanResponderRelease: (_, gestureState) => {
+                if (Math.abs(gestureState.dx) > 50) {
+                    if (gestureState.dx > 0) {
+                        onPreviousDay?.();
+                    } else {
+                        onNextDay?.();
+                    }
+                }
+            },
+        }),
+        [onPreviousDay, onNextDay]
+    );
 
     const getTaskPosition = (task: Task) => {
         const dayStart = startOfDay(date);
@@ -225,7 +247,11 @@ export default function DailyView({
     }), [colors]);
 
     return (
-        <ScrollView ref={scrollViewRef} style={{ flex: 1 }}>
+        <ScrollView
+            ref={scrollViewRef}
+            style={{ flex: 1 }}
+            {...panResponder.panHandlers}
+        >
             <View style={styles.container}>
                 <View style={styles.timeColumn}>
                     {hours.map((hour) => (

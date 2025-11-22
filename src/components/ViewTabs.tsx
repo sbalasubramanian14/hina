@@ -15,7 +15,6 @@ export default function ViewTabs({ selectedView, onViewChange }: ViewTabsProps) 
 
     const tabs: { key: ViewMode; label: string }[] = [
         { key: 'day', label: 'Day' },
-        { key: 'week', label: 'Week' },
         { key: 'month', label: 'Month' },
     ];
 

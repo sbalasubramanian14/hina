@@ -11,10 +11,9 @@ import { useTheme } from '../context/ThemeContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Task, TaskSpace } from '../types';
 import { getTasks, getTaskSpaces, addTask, saveTasks, deleteTask } from '../services/storage';
-import { addDays, subDays, addWeeks, subWeeks, addMonths, subMonths } from 'date-fns';
+import { addDays, subDays, addMonths, subMonths } from 'date-fns';
 import DailyView from '../components/DailyView';
 import MonthlyView from '../components/MonthlyView';
-import WeeklyView from '../components/WeeklyView';
 import ViewTabs, { ViewMode } from '../components/ViewTabs';
 import DateNavigation from '../components/DateNavigation';
 import AddTaskModal from '../components/AddTaskModal';
@@ -57,9 +56,6 @@ export default function HomeScreen({ navigation }: any) {
             case 'day':
                 setSelectedDate(prev => subDays(prev, 1));
                 break;
-            case 'week':
-                setSelectedDate(prev => subWeeks(prev, 1));
-                break;
             case 'month':
                 setSelectedDate(prev => subMonths(prev, 1));
                 break;
@@ -70,9 +66,6 @@ export default function HomeScreen({ navigation }: any) {
         switch (viewMode) {
             case 'day':
                 setSelectedDate(prev => addDays(prev, 1));
-                break;
-            case 'week':
-                setSelectedDate(prev => addWeeks(prev, 1));
                 break;
             case 'month':
                 setSelectedDate(prev => addMonths(prev, 1));
@@ -253,17 +246,6 @@ export default function HomeScreen({ navigation }: any) {
                         onPreviousDay={handlePrevious}
                         onNextDay={handleNext}
                         onToday={handleToday}
-                    />
-                )}
-
-                {viewMode === 'week' && (
-                    <WeeklyView
-                        date={selectedDate}
-                        tasks={tasks}
-                        taskSpaces={taskSpaces}
-                        onTaskPress={handleTaskPress}
-                        onToggleComplete={handleToggleComplete}
-                        onDateSelect={handleDateSelect}
                     />
                 )}
 

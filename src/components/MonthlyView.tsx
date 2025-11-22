@@ -112,6 +112,10 @@ export default function MonthlyView({
             color: colors.text.primary,
             marginBottom: 4,
         },
+        todayText: {
+            color: colors.primary,
+            fontWeight: FONT_WEIGHTS.bold,
+        },
         selectedDayText: {
             color: colors.text.inverse,
             fontWeight: FONT_WEIGHTS.bold,
@@ -158,7 +162,7 @@ export default function MonthlyView({
                         >
                             <Text style={[
                                 styles.dayText,
-                                isToday && styles.selectedDayText
+                                isToday && styles.todayText
                             ]}>
                                 {format(day, 'd')}
                             </Text>
