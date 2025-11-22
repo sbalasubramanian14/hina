@@ -5,6 +5,7 @@ import {
     TouchableOpacity,
     StyleSheet,
     RefreshControl,
+    Alert,
 } from 'react-native';
 import { SPACING } from '../constants/colors';
 import { useTheme } from '../context/ThemeContext';
@@ -18,6 +19,7 @@ import ViewTabs, { ViewMode } from '../components/ViewTabs';
 import DateNavigation from '../components/DateNavigation';
 import AddTaskModal from '../components/AddTaskModal';
 import { scheduleTaskReminder, cancelTaskReminder, rescheduleAllReminders } from '../services/reminderScheduler';
+import { generateRecurringInstances, getTemplateTasks } from '../services/recurringTasks';
 
 export default function HomeScreen({ navigation }: any) {
     const { colors } = useTheme();
@@ -40,12 +42,26 @@ export default function HomeScreen({ navigation }: any) {
                 getTaskSpaces(),
                 getUserProfile(),
             ]);
-            setTasks(loadedTasks);
+
+            // Generate recurring instances for the next 7 days
+            const recurringTemplates = loadedTasks.filter(t => t.isRecurring && t.recurrenceRule);
+            const nonRecurringTasks = loadedTasks.filter(t => !t.isRecurring);
+
+            let allInstances: Task[] = [];
+            for (const template of recurringTemplates) {
+                const instances = generateRecurringInstances(template, 7); // Next 7 days
+                allInstances = [...allInstances, ...instances];
+            }
+
+            // DON'T display templates - only instances and non-recurring tasks
+            const allTasks = [...nonRecurringTasks, ...allInstances];
+
+            setTasks(allTasks);
             setTaskSpaces(loadedSpaces);
 
             // Reschedule all pending reminders
             await rescheduleAllReminders(
-                loadedTasks,
+                allTasks,
                 loadedSpaces,
                 profile?.interests?.flatMap(i => i.items) || []
             );
@@ -136,7 +152,8 @@ export default function HomeScreen({ navigation }: any) {
                     endTime: taskData.endTime!,
                     taskSpaceId: taskData.taskSpaceId!,
                     completed: false,
-                    isRecurring: false,
+                    isRecurring: taskData.isRecurring || false,
+                    recurrenceRule: taskData.recurrenceRule,
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                     reminderMinutesBefore: taskData.reminderMinutesBefore ?? 15,
@@ -165,6 +182,7 @@ export default function HomeScreen({ navigation }: any) {
             }
 
             setIsAddTaskVisible(false);
+            await loadData(); // Reload to regenerate instances
         } catch (error) {
             console.error('Error saving task:', error);
             await loadData(); // Revert on error
@@ -173,15 +191,62 @@ export default function HomeScreen({ navigation }: any) {
 
     const handleDeleteTask = async (taskId: string) => {
         try {
-            // Cancel reminder
-            await cancelTaskReminder(taskId);
+            const taskToDelete = tasks.find(t => t.id === taskId);
+            if (!taskToDelete) return;
 
-            // Update local state immediately
-            setTasks(prev => prev.filter(t => t.id !== taskId));
+            // Check if it's a recurring instance
+            const isRecurringInstance = !!taskToDelete.metadata?.recurringTemplateId;
+            const templateId = taskToDelete.metadata?.recurringTemplateId;
 
-            // Persist changes
-            await deleteTask(taskId);
-            setIsAddTaskVisible(false);
+            if (isRecurringInstance && templateId) {
+                // It's a recurring instance - ask user what to delete
+                Alert.alert(
+                    'Delete Recurring Task',
+                    'This is a recurring task. What would you like to delete?',
+                    [
+                        {
+                            text: 'Cancel',
+                            style: 'cancel'
+                        },
+                        {
+                            text: 'Delete All Occurrences',
+                            style: 'destructive',
+                            onPress: async () => {
+                                try {
+                                    // Delete template and all instances
+                                    const updatedTasks = tasks.filter(t =>
+                                        t.id !== templateId &&
+                                        t.metadata?.recurringTemplateId !== templateId
+                                    );
+                                    setTasks(updatedTasks);
+
+                                    // Delete template from storage
+                                    await deleteTask(templateId);
+
+                                    // Cancel all reminders for instances
+                                    const instances = tasks.filter(t => t.metadata?.recurringTemplateId === templateId);
+                                    for (const instance of instances) {
+                                        await cancelTaskReminder(instance.id);
+                                    }
+
+                                    // Cancel template reminder
+                                    await cancelTaskReminder(templateId);
+                                    setIsAddTaskVisible(false);
+                                } catch (error) {
+                                    console.error('Error deleting recurring task:', error);
+                                    await loadData();
+                                }
+                            }
+                        }
+                    ]
+                );
+            } else {
+                // Regular non-recurring task
+                await cancelTaskReminder(taskId);
+                setTasks(prev => prev.filter(t => t.id !== taskId));
+                await deleteTask(taskId);
+                setIsAddTaskVisible(false);
+            }
         } catch (error) {
             console.error('Error deleting task:', error);
             await loadData(); // Revert on error

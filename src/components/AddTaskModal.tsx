@@ -12,9 +12,10 @@ import {
 } from 'react-native';
 import { SPACING, BORDER_RADIUS, FONT_SIZES, FONT_WEIGHTS } from '../constants/colors';
 import { useTheme } from '../context/ThemeContext';
-import { Task, TaskSpace } from '../types';
+import { Task, TaskSpace, RecurrenceRule } from '../types';
 import { MaterialIcons } from '@expo/vector-icons';
 import { format, addHours, isSameDay } from 'date-fns';
+import RecurringTaskModal from './RecurringTaskModal';
 
 interface AddTaskModalProps {
     visible: boolean;
@@ -62,6 +63,10 @@ export default function AddTaskModal({
     const [customReminderHours, setCustomReminderHours] = useState(0);
     const [customReminderMinutes, setCustomReminderMinutes] = useState(15);
 
+    // Recurring state
+    const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule | undefined>(undefined);
+    const [showRecurringModal, setShowRecurringModal] = useState(false);
+
     useEffect(() => {
         if (visible) {
             if (task) {
@@ -73,6 +78,7 @@ export default function AddTaskModal({
                 setEndTime(new Date(task.endTime));
                 setChecklist(task.checklist || []);
                 setReminderMinutes(task.reminderMinutesBefore ?? 15);
+                setRecurrenceRule(task.recurrenceRule);
 
                 const start = new Date(task.startTime);
                 const end = new Date(task.endTime);
@@ -110,6 +116,8 @@ export default function AddTaskModal({
             endTime: endTime.toISOString(),
             checklist: checklist,
             reminderMinutesBefore: reminderMinutes,
+            isRecurring: !!recurrenceRule,
+            recurrenceRule: recurrenceRule,
         });
         onClose();
     };
@@ -685,6 +693,26 @@ export default function AddTaskModal({
             color: colors.primary,
             fontWeight: FONT_WEIGHTS.bold,
         },
+        // Recurring button styles
+        recurringButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: SPACING.sm,
+            padding: SPACING.md,
+            backgroundColor: colors.background.secondary,
+            borderRadius: BORDER_RADIUS.md,
+            borderWidth: 1,
+            borderColor: colors.border,
+            marginBottom: SPACING.md,
+        },
+        recurringButtonText: {
+            fontSize: FONT_SIZES.md,
+            color: colors.text.secondary,
+        },
+        recurringButtonTextActive: {
+            color: colors.primary,
+            fontWeight: FONT_WEIGHTS.semibold,
+        },
     }), [colors]);
 
     return (
@@ -932,6 +960,26 @@ export default function AddTaskModal({
                             </ScrollView>
                         </View>
 
+                        {/* Recurring Task Button */}
+                        <TouchableOpacity
+                            style={styles.recurringButton}
+                            onPress={() => setShowRecurringModal(true)}
+                        >
+                            <MaterialIcons
+                                name="repeat"
+                                size={20}
+                                color={recurrenceRule ? colors.primary : colors.text.secondary}
+                            />
+                            <Text style={[
+                                styles.recurringButtonText,
+                                recurrenceRule && styles.recurringButtonTextActive
+                            ]}>
+                                {recurrenceRule
+                                    ? `Recurring ${recurrenceRule.frequency}`
+                                    : 'Make recurring'}
+                            </Text>
+                        </TouchableOpacity>
+
                         {/* Save Button */}
                         <TouchableOpacity
                             style={[styles.saveButton, !title.trim() && styles.disabledButton]}
@@ -1026,6 +1074,14 @@ export default function AddTaskModal({
                     </View>
                 </TouchableOpacity>
             </Modal>
+
+            {/* Recurring Task Modal */}
+            <RecurringTaskModal
+                visible={showRecurringModal}
+                onClose={() => setShowRecurringModal(false)}
+                onSave={setRecurrenceRule}
+                currentRule={recurrenceRule}
+            />
         </Modal>
     );
 }
