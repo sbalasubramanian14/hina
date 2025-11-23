@@ -82,7 +82,7 @@ export async function getTaskSuggestion(
             day: dayOfWeek,
             period: timeContext,
             space: request.taskSpace,
-            interests: request.userInterests?.slice(0, 3) || [],
+            interests: request.userInterests || [],
             checklist: request.checklist?.map(item => item.text) || [],
             location: request.location || '',
         };
