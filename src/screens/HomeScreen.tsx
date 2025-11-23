@@ -20,6 +20,7 @@ import DateNavigation from '../components/DateNavigation';
 import AddTaskModal from '../components/AddTaskModal';
 import { scheduleTaskReminder, cancelTaskReminder, rescheduleAllReminders } from '../services/reminderScheduler';
 import { generateRecurringInstances, getTemplateTasks } from '../services/recurringTasks';
+import * as Location from 'expo-location';
 
 export default function HomeScreen({ navigation }: any) {
     const { colors } = useTheme();
@@ -132,6 +133,19 @@ export default function HomeScreen({ navigation }: any) {
                 await cancelTaskReminder(updatedTask.id);
                 if (!updatedTask.completed && updatedTask.reminderMinutesBefore !== null) {
                     const taskSpace = taskSpaces.find(ts => ts.id === updatedTask.taskSpaceId);
+
+                    // Get current location for AI context
+                    let location: string | undefined;
+                    try {
+                        const { status } = await Location.getForegroundPermissionsAsync();
+                        if (status === 'granted') {
+                            const loc = await Location.getCurrentPositionAsync({});
+                            location = `${loc.coords.latitude.toFixed(2)}, ${loc.coords.longitude.toFixed(2)}`;
+                        }
+                    } catch (error) {
+                        console.log('Could not get location for AI suggestion');
+                    }
+
                     await scheduleTaskReminder({
                         taskId: updatedTask.id,
                         taskTitle: updatedTask.title,
@@ -140,6 +154,8 @@ export default function HomeScreen({ navigation }: any) {
                         reminderMinutes: updatedTask.reminderMinutesBefore ?? 15,
                         taskSpace: taskSpace?.name || 'Task',
                         userInterests,
+                        checklist: updatedTask.checklist,
+                        location,
                     });
                 }
             } else {
@@ -169,6 +185,19 @@ export default function HomeScreen({ navigation }: any) {
                 // Schedule reminder if enabled
                 if (newTask.reminderMinutesBefore !== null) {
                     const taskSpace = taskSpaces.find(ts => ts.id === newTask.taskSpaceId);
+
+                    // Get current location for AI context
+                    let location: string | undefined;
+                    try {
+                        const { status } = await Location.getForegroundPermissionsAsync();
+                        if (status === 'granted') {
+                            const loc = await Location.getCurrentPositionAsync({});
+                            location = `${loc.coords.latitude.toFixed(2)}, ${loc.coords.longitude.toFixed(2)}`;
+                        }
+                    } catch (error) {
+                        console.log('Could not get location for AI suggestion');
+                    }
+
                     await scheduleTaskReminder({
                         taskId: newTask.id,
                         taskTitle: newTask.title,
@@ -177,6 +206,8 @@ export default function HomeScreen({ navigation }: any) {
                         reminderMinutes: newTask.reminderMinutesBefore ?? 15,
                         taskSpace: taskSpace?.name || 'Task',
                         userInterests,
+                        checklist: newTask.checklist,
+                        location,
                     });
                 }
             }

@@ -35,7 +35,7 @@ export default function TaskSpacesScreen() {
     };
 
     const getTaskCount = (spaceId: string): number => {
-        return tasks.filter(task => task.taskSpaceId === spaceId).length;
+        return tasks.filter(task => task.taskSpaceId === spaceId && !task.completed).length;
     };
 
     const handleAddSpace = () => {

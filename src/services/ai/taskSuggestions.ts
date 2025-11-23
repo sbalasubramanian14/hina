@@ -8,6 +8,8 @@ export interface TaskSuggestionRequest {
     startTime: Date;
     taskSpace: string;
     userInterests?: string[];
+    checklist?: { id: string; text: string; completed: boolean }[];
+    location?: string;
 }
 
 interface SuggestionCache {
@@ -81,6 +83,8 @@ export async function getTaskSuggestion(
             period: timeContext,
             space: request.taskSpace,
             interests: request.userInterests?.slice(0, 3) || [],
+            checklist: request.checklist?.map(item => item.text) || [],
+            location: request.location || '',
         };
 
         console.log('📤 Request payload:', JSON.stringify(prompt, null, 2));

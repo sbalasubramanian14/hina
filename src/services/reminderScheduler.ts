@@ -11,6 +11,8 @@ export interface ReminderScheduleOptions {
     reminderMinutes: number;
     taskSpace: string;
     userInterests?: string[];
+    checklist?: { id: string; text: string; completed: boolean }[];
+    location?: string;
 }
 
 // Configure notification handler
@@ -68,6 +70,8 @@ export async function scheduleTaskReminder(
                 startTime: options.startTime,
                 taskSpace: options.taskSpace,
                 userInterests: options.userInterests,
+                checklist: options.checklist,
+                location: options.location,
             });
             console.log('✅ AI suggestion:', aiSuggestion);
         } catch (error) {
@@ -173,6 +177,8 @@ export async function rescheduleAllReminders(
                 reminderMinutes,
                 taskSpace: taskSpace?.name || 'Task',
                 userInterests,
+                checklist: task.checklist,
+                // Note: location is not available during app startup reschedule
             });
         }
 
