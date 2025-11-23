@@ -10,6 +10,7 @@ export interface TaskSuggestionRequest {
     userInterests?: string[];
     checklist?: { id: string; text: string; completed: boolean }[];
     location?: string;
+    userName?: string;
 }
 
 interface SuggestionCache {
@@ -76,6 +77,7 @@ export async function getTaskSuggestion(
         const timeContext = timeOfDay < 12 ? 'morning' : timeOfDay < 17 ? 'afternoon' : 'evening';
 
         const prompt = {
+            user: request.userName || 'User',
             task: request.taskTitle,
             desc: request.taskDescription || '',
             time: format(request.startTime, 'HH:mm'),

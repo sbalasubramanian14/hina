@@ -113,6 +113,7 @@ export default function HomeScreen({ navigation }: any) {
             // Get user profile for interests
             const profile = await getUserProfile();
             const userInterests = profile?.interests?.flatMap(i => i.items) || [];
+            const userName = profile?.name;
 
             if (editingTask) {
                 // Update existing task
@@ -156,6 +157,7 @@ export default function HomeScreen({ navigation }: any) {
                         userInterests,
                         checklist: updatedTask.checklist,
                         location,
+                        userName,
                     });
                 }
             } else {
@@ -208,6 +210,7 @@ export default function HomeScreen({ navigation }: any) {
                         userInterests,
                         checklist: newTask.checklist,
                         location,
+                        userName,
                     });
                 }
             }

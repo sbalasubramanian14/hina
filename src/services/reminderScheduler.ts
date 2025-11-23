@@ -13,6 +13,7 @@ export interface ReminderScheduleOptions {
     userInterests?: string[];
     checklist?: { id: string; text: string; completed: boolean }[];
     location?: string;
+    userName?: string;
 }
 
 // Configure notification handler
@@ -80,6 +81,7 @@ export async function scheduleTaskReminder(
                 userInterests: options.userInterests,
                 checklist: options.checklist,
                 location: options.location,
+                userName: options.userName,
             });
             console.log('✅ AI suggestion:', aiSuggestion);
         } catch (error) {
