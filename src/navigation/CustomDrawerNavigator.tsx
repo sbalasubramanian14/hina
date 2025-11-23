@@ -22,8 +22,8 @@ interface DrawerItem {
 }
 
 const drawerItems: DrawerItem[] = [
-    { name: 'home', label: 'Home', icon: 'home', component: HomeScreen },
-    { name: 'spaces', label: 'Task Spaces', icon: 'folder', component: TaskSpacesScreen },
+    { name: 'home', label: 'Tasks', icon: 'home', component: HomeScreen },
+    { name: 'spaces', label: 'Spaces', icon: 'folder', component: TaskSpacesScreen },
     { name: 'settings', label: 'Settings', icon: 'settings', component: SettingsScreen },
 ];
 
