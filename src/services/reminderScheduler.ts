@@ -27,6 +27,14 @@ Notifications.setNotificationHandler({
 });
 
 /**
+ * Get a random emoji for task notifications
+ */
+function getRandomNotificationEmoji(): string {
+    const emojis = ['📋', '✨', '🎯', '⭐', '💫', '🔔', '⏰', '🎉', '💪', '🚀', '✅', '📌', '🎊', '🌟'];
+    return emojis[Math.floor(Math.random() * emojis.length)];
+}
+
+/**
  * Schedule a task reminder notification with AI suggestion
  */
 export async function scheduleTaskReminder(
@@ -86,7 +94,7 @@ export async function scheduleTaskReminder(
             : `Starts in ${minutesUntilStart} min`;
 
         const notificationContent = {
-            title: `📋 ${options.taskTitle}`,
+            title: `${getRandomNotificationEmoji()} ${options.taskTitle}`,
             body: `${aiSuggestion}\n${timeInfo}`,
         };
 
