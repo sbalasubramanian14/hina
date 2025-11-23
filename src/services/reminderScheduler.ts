@@ -108,7 +108,7 @@ export async function scheduleTaskReminder(
                     taskId: options.taskId,
                     type: 'task_reminder',
                 },
-                sound: true,
+                sound: 'default', // Use default notification sound
                 priority: Notifications.AndroidNotificationPriority.HIGH,
             },
             trigger: {

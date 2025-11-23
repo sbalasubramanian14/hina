@@ -37,6 +37,8 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
                 importance: Notifications.AndroidImportance.MAX,
                 vibrationPattern: [0, 250, 250, 250],
                 lightColor: '#6366F1',
+                sound: 'default', // Use default notification sound
+                enableVibrate: true,
             });
         }
 
