@@ -128,8 +128,11 @@ export default function HomeScreen({ navigation }: any) {
                 const updatedTasks = tasks.map(t => t.id === updatedTask.id ? updatedTask : t);
                 setTasks(updatedTasks);
 
-                // Persist changes
-                await saveTasks(updatedTasks);
+                // Persist changes - Load existing tasks from storage to preserve templates
+                const existingTasks = await getTasks();
+                // Update the task in the existing tasks (which includes templates)
+                const tasksToSave = existingTasks.map(t => t.id === updatedTask.id ? updatedTask : t);
+                await saveTasks(tasksToSave);
 
                 // Reschedule reminder with updated task info
                 await cancelTaskReminder(updatedTask.id);
@@ -349,8 +352,10 @@ export default function HomeScreen({ navigation }: any) {
             const updatedTasks = tasks.map(t => t.id === task.id ? updatedTask : t);
             setTasks(updatedTasks);
 
-            // Persist changes
-            await saveTasks(updatedTasks);
+            // Persist changes - Load existing tasks from storage to preserve templates
+            const existingTasks = await getTasks();
+            const tasksToSave = existingTasks.map(t => t.id === task.id ? updatedTask : t);
+            await saveTasks(tasksToSave);
 
             // Cancel reminder if task is completed
             if (updatedTask.completed) {
@@ -381,8 +386,10 @@ export default function HomeScreen({ navigation }: any) {
             const updatedTasks = tasks.map(t => t.id === taskId ? updatedTask : t);
             setTasks(updatedTasks);
 
-            // Persist changes
-            await saveTasks(updatedTasks);
+            // Persist changes - Load existing tasks from storage to preserve templates
+            const existingTasks = await getTasks();
+            const tasksToSave = existingTasks.map(t => t.id === taskId ? updatedTask : t);
+            await saveTasks(tasksToSave);
         } catch (error) {
             console.error('Error toggling checklist item:', error);
             await loadData(); // Revert on error
