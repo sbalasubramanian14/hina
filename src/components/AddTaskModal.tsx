@@ -67,6 +67,9 @@ export default function AddTaskModal({
     const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule | undefined>(undefined);
     const [showRecurringModal, setShowRecurringModal] = useState(false);
 
+    // Check if this is a recurring instance (not the template)
+    const isRecurringInstance = task?.metadata?.recurringTemplateId !== undefined;
+
     useEffect(() => {
         if (visible) {
             if (task) {
@@ -718,6 +721,21 @@ export default function AddTaskModal({
             color: colors.primary,
             fontWeight: FONT_WEIGHTS.semibold,
         },
+        infoBox: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.primary + '15',
+            padding: SPACING.md,
+            borderRadius: BORDER_RADIUS.md,
+            gap: SPACING.sm,
+            marginBottom: SPACING.md,
+        },
+        infoText: {
+            flex: 1,
+            fontSize: FONT_SIZES.sm,
+            color: colors.text.primary,
+            lineHeight: 18,
+        },
     }), [colors]);
 
     return (
@@ -734,12 +752,22 @@ export default function AddTaskModal({
                 <View style={styles.modalContent}>
                     <View style={styles.header}>
                         <Text style={styles.title}>
-                            {task ? 'Edit Task' : 'New Task'}
+                            {isRecurringInstance ? 'Recurring Task Instance' : (task ? 'Edit Task' : 'New Task')}
                         </Text>
                         <TouchableOpacity onPress={onClose}>
                             <MaterialIcons name="close" size={24} color={colors.text.secondary} />
                         </TouchableOpacity>
                     </View>
+
+                    {/* Info message for recurring instances */}
+                    {isRecurringInstance && (
+                        <View style={styles.infoBox}>
+                            <MaterialIcons name="info-outline" size={20} color={colors.primary} />
+                            <Text style={styles.infoText}>
+                                This is a recurring task instance. You can only delete this occurrence.
+                            </Text>
+                        </View>
+                    )}
 
                     <ScrollView showsVerticalScrollIndicator={false}>
                         {/* Title */}
@@ -985,16 +1013,18 @@ export default function AddTaskModal({
                             </Text>
                         </TouchableOpacity>
 
-                        {/* Save Button */}
-                        <TouchableOpacity
-                            style={[styles.saveButton, !title.trim() && styles.disabledButton]}
-                            onPress={handleSave}
-                            disabled={!title.trim()}
-                        >
-                            <Text style={styles.saveButtonText}>
-                                {task ? 'Update Task' : 'Create Task'}
-                            </Text>
-                        </TouchableOpacity>
+                        {/* Save Button - Hidden for recurring instances */}
+                        {!isRecurringInstance && (
+                            <TouchableOpacity
+                                style={[styles.saveButton, !title.trim() && styles.disabledButton]}
+                                onPress={handleSave}
+                                disabled={!title.trim()}
+                            >
+                                <Text style={styles.saveButtonText}>
+                                    {task ? 'Update Task' : 'Create Task'}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
 
                         {/* Delete Button */}
                         {task && onDelete && (

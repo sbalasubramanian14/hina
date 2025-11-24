@@ -36,12 +36,16 @@ export function generateRecurringInstances(
     let instanceCount = 0;
     const maxInstances = 100; // Safety limit
 
+    console.log(`🔄 Generating recurring instances from ${currentDate.toISOString()} to ${endDate.toISOString()}`);
+    console.log(`📋 Recurrence rule:`, JSON.stringify(rule, null, 2));
+
     while (isBefore(currentDate, endDate) && instanceCount < maxInstances) {
         let shouldCreateInstance = false;
 
         if (rule.frequency === 'weekly' && rule.daysOfWeek) {
             const dayOfWeek = getDay(currentDate);
             shouldCreateInstance = rule.daysOfWeek.includes(dayOfWeek);
+            console.log(`📅 Checking ${currentDate.toISOString().split('T')[0]}: day=${dayOfWeek}, shouldCreate=${shouldCreateInstance}, allowedDays=${JSON.stringify(rule.daysOfWeek)}`);
         } else if (rule.frequency === 'monthly') {
             const dayOfMonth = getDate(currentDate);
             const templateDayOfMonth = getDate(startDate);
@@ -72,11 +76,14 @@ export function generateRecurringInstances(
 
             instances.push(instance);
             instanceCount++;
+            console.log(`✅ Created instance #${instanceCount} for ${instanceStart.toISOString()}`);
         }
 
         // Move to next day
         currentDate = addDays(currentDate, 1);
     }
+
+    console.log(`📊 Total instances generated: ${instances.length}`);
 
     return instances;
 }

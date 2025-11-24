@@ -60,12 +60,13 @@ export default function HomeScreen({ navigation }: any) {
             setTasks(allTasks);
             setTaskSpaces(loadedSpaces);
 
-            // Reschedule all pending reminders
-            await rescheduleAllReminders(
-                allTasks,
-                loadedSpaces,
-                profile?.interests?.flatMap(i => i.items) || []
-            );
+            // REMOVED: Automatic rescheduling on app startup
+            // Notifications are now scheduled only when tasks are created/updated
+            // await rescheduleAllReminders(
+            //     allTasks,
+            //     loadedSpaces,
+            //     profile?.interests?.flatMap(i => i.items) || []
+            // );
         } catch (error) {
             console.error('Error loading data:', error);
         }
@@ -147,18 +148,49 @@ export default function HomeScreen({ navigation }: any) {
                         console.log('Could not get location for AI suggestion');
                     }
 
-                    await scheduleTaskReminder({
-                        taskId: updatedTask.id,
-                        taskTitle: updatedTask.title,
-                        taskDescription: updatedTask.description,
-                        startTime: new Date(updatedTask.startTime),
-                        reminderMinutes: updatedTask.reminderMinutesBefore ?? 15,
-                        taskSpace: taskSpace?.name || 'Task',
-                        userInterests,
-                        checklist: updatedTask.checklist,
-                        location,
-                        userName,
-                    });
+                    // For recurring tasks, cancel and reschedule all instances (7 days)
+                    if (updatedTask.isRecurring && updatedTask.recurrenceRule) {
+                        // Cancel all existing instance reminders
+                        const oldInstances = tasks.filter(t =>
+                            t.metadata?.recurringTemplateId === updatedTask.id
+                        );
+                        for (const instance of oldInstances) {
+                            await cancelTaskReminder(instance.id);
+                        }
+
+                        // Generate and schedule new instances
+                        const instances = generateRecurringInstances(updatedTask, 7);
+                        console.log(`📅 Rescheduling ${instances.length} recurring instances for next 7 days`);
+
+                        for (const instance of instances) {
+                            await scheduleTaskReminder({
+                                taskId: instance.id,
+                                taskTitle: instance.title,
+                                taskDescription: instance.description,
+                                startTime: new Date(instance.startTime),
+                                reminderMinutes: updatedTask.reminderMinutesBefore ?? 15,
+                                taskSpace: taskSpace?.name || 'Task',
+                                userInterests,
+                                checklist: instance.checklist,
+                                location,
+                                userName,
+                            });
+                        }
+                    } else {
+                        // For non-recurring tasks, schedule once
+                        await scheduleTaskReminder({
+                            taskId: updatedTask.id,
+                            taskTitle: updatedTask.title,
+                            taskDescription: updatedTask.description,
+                            startTime: new Date(updatedTask.startTime),
+                            reminderMinutes: updatedTask.reminderMinutesBefore ?? 15,
+                            taskSpace: taskSpace?.name || 'Task',
+                            userInterests,
+                            checklist: updatedTask.checklist,
+                            location,
+                            userName,
+                        });
+                    }
                 }
             } else {
                 // Create new task
@@ -200,18 +232,40 @@ export default function HomeScreen({ navigation }: any) {
                         console.log('Could not get location for AI suggestion');
                     }
 
-                    await scheduleTaskReminder({
-                        taskId: newTask.id,
-                        taskTitle: newTask.title,
-                        taskDescription: newTask.description,
-                        startTime: new Date(newTask.startTime),
-                        reminderMinutes: newTask.reminderMinutesBefore ?? 15,
-                        taskSpace: taskSpace?.name || 'Task',
-                        userInterests,
-                        checklist: newTask.checklist,
-                        location,
-                        userName,
-                    });
+                    // For recurring tasks, schedule notifications for all instances (7 days)
+                    if (newTask.isRecurring && newTask.recurrenceRule) {
+                        const instances = generateRecurringInstances(newTask, 7);
+                        console.log(`📅 Scheduling ${instances.length} recurring instances for next 7 days`);
+
+                        for (const instance of instances) {
+                            await scheduleTaskReminder({
+                                taskId: instance.id,
+                                taskTitle: instance.title,
+                                taskDescription: instance.description,
+                                startTime: new Date(instance.startTime),
+                                reminderMinutes: newTask.reminderMinutesBefore ?? 15,
+                                taskSpace: taskSpace?.name || 'Task',
+                                userInterests,
+                                checklist: instance.checklist,
+                                location,
+                                userName,
+                            });
+                        }
+                    } else {
+                        // For non-recurring tasks, schedule once
+                        await scheduleTaskReminder({
+                            taskId: newTask.id,
+                            taskTitle: newTask.title,
+                            taskDescription: newTask.description,
+                            startTime: new Date(newTask.startTime),
+                            reminderMinutes: newTask.reminderMinutesBefore ?? 15,
+                            taskSpace: taskSpace?.name || 'Task',
+                            userInterests,
+                            checklist: newTask.checklist,
+                            location,
+                            userName,
+                        });
+                    }
                 }
             }
 

@@ -127,7 +127,15 @@ export const getMonthDays = (date: Date) => {
     const monthStart = startOfMonth(date);
     const monthEnd = endOfMonth(date);
 
-    return eachDayOfInterval({ start: monthStart, end: monthEnd });
+    // Get the start of the week containing the first day of the month
+    // weekStartsOn: 1 means Monday (0 = Sunday, 1 = Monday, etc.)
+    const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+
+    // Get the end of the week containing the last day of the month
+    const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+
+    // Return all days in the calendar grid (including leading/trailing days from adjacent months)
+    return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 };
 
 export const areTasksOverlapping = (task1: Task, task2: Task): boolean => {
